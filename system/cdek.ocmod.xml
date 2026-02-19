@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+  <code>CDEK</code>
+  <name>CDEK opencart</name>
+  <version>3.0.0.0</version>
+  <author>OpenCart.ru</author>
+  <link>http://www.opencart.ru</link>
+  <file path="catalog/view/theme/*/template/checkout/shipping_method.twig">
+    <operation>
+      <search><![CDATA[{{ quote.text }}]]></search>
+      <add position="after"><![CDATA[{% if quote.description is not empty %}{{quote.description}}{% endif %}]]></add>
+    </operation>
+  </file>
+  <file path="admin/controller/sale/order.php">
+    <operation>
+      <search><![CDATA[$order_info['shipping_method'];]]></search>
+      <add position="after"><![CDATA[
+        $data['pvz_cdek'] = $order_info['pvz_cdek'];
+      ]]></add>
+    </operation>
+  </file>
+  <file path="admin/model/sale/order.php">
+    <operation>
+      <search><![CDATA[$order_query->row['shipping_method'],]]></search>
+      <add position="after"><![CDATA[
+        'pvz_cdek'         => $order_query->row['pvz_cdek'],
+      ]]></add>
+    </operation>
+  </file>  
+  <file path="admin/view/template/sale/order_info.twig">
+    <operation>
+      <search><![CDATA[{{ shipping_method }}]]></search>
+      <add position="replace"><![CDATA[{{ shipping_method }}{% if pvz_cdek is not empty %}(ПВЗ:{{ pvz_cdek }}){% endif %}]]></add>
+    </operation>
+  </file>
+  <file path="admin/controller/common/column_left.php">
+    <operation>
+      <search><![CDATA[$catalog = array();]]></search>
+      <add position="before" offset="1"><![CDATA[// CDEK OCMOD START
+      // CDEK
+      $cdek = array();
+      $cdek[] = array(
+        'name'     => 'Отгрузка в СДЭК',
+        'href'     => $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], true),
+        'children' => array()
+      );
+      $cdek[] = array(
+        'name'     => 'Расчет доставки',
+        'href'     => $this->url->link('extension/shipping/cdek', 'user_token=' . $this->session->data['user_token'], true),
+        'children' => array()
+      );
+      $cdek[] = array(
+        'name'     => 'Наложенный платеж',
+        'href'     => $this->url->link('extension/payment/cod_cdek', 'user_token=' . $this->session->data['user_token'], true),
+        'children' => array()
+      );
+      $cdek[] = array(
+        'name'     => 'Учитывать в заказе',
+        'href'     => $this->url->link('extension/total/cdek', 'user_token=' . $this->session->data['user_token'], true),
+        'children' => array()
+      );
+
+      $cdek_other = array();
+      $cdek_other[] = array(
+        'name'     => 'Документация',
+        'href'     => 'http://cdek.opencart.ru/documentation',
+        'children' => array()
+      );
+      $cdek_other[] = array(
+        'name'     => 'Поддержка',
+        'href'     => 'http://helpdesk.opencart.ru',
+        'children' => array()
+      );
+      $cdek_other[] = array(
+        'name'     => 'Лицензия',
+        'href'     => $this->url->link('tool/cdektool', 'user_token=' . $this->session->data['user_token'], true),
+        'children' => array()
+      );
+
+      $cdek[] = array(
+        'name'     => 'Другое',
+        'href'     => '',
+        'children' => $cdek_other
+      );
+
+      $data['menus'][] = array(
+        'id'       => 'menu-cdek',
+        'icon'     => 'fa-truck',
+        'name'     => 'СДЭК',
+        'href'     => '',
+        'children' => $cdek
+      );
+      // CDEK OCMOD END]]></add>
+    </operation>
+  </file>
+
+</modification>
