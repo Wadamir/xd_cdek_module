@@ -13,11 +13,11 @@
 
 @media (max-width: 768px) {
 	.cdek_map_container {
-	    width: 100%;
-	    height: 95%;
+        width: 100%;
+        height: 95%;
 
-	    left: 0;
-	    top: 5px;
+        left: 0;
+        top: 5px;
 	}
 }
 

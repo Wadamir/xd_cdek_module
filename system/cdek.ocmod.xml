@@ -73,7 +73,7 @@
       );
       $cdek_other[] = array(
         'name'     => 'Лицензия',
-        'href'     => $this->url->link('tool/cdektool', 'user_token=' . $this->session->data['user_token'], true),
+        'href'     => $this->url->link('tool/cdek_tool', 'user_token=' . $this->session->data['user_token'], true),
         'children' => array()
       );
 

@@ -1,193 +1,266 @@
 <?php
-class cdek_integrator {
 
-	protected $base_url = 'https://integration.cdek.ru/'; // Базовый URL API
+/**
+ * Main CDEK integration client.
+ *
+ * This class handles authentication data, endpoint selection,
+ * component loading, request execution, and response parsing.
+ */
+class cdek_integrator
+{
+    /** Production API base URL. */
+    protected $base_url = 'https://integration.cdek.ru/';
+
+    /** API URL used for AJAX requests. */
+    protected $ajax_url = 'https://api.cdek.ru/';
+
+    /** Account credentials and shipment date context. */
+    protected $account;
+    protected $secure_password;
+    protected $date;
+
+    /** Logger instance. */
+    public $logger;
+
+    /** Internal metadata. */
+    private $version = "1.0";
+    private static $ext_dir;
+    protected $method = '';
+
+    /** Runtime diagnostics for API interaction. */
+    public $error;
+    public $curl_url;
+    public $curl_data;
+    public $curl_success;
+
+    const TEST_ACCOUNT = 'wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP';
+    const TEST_SECURE_PASSWORD = 'RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5';
+
+    const BASE_TEST_URL = 'https://integration.edu.cdek.ru/';
+    const AJAX_TEST_URL = 'https://api.edu.cdek.ru/';
 
 
-	protected $ajax_url = 'https://api.cdek.ru/'; //URL API для ajax запросов
+    public function __construct($account = '', $secure_password = '', $date = '')
+    {
+        if (!empty($account) && !empty($secure_password)) {
+            $this->setAuth($account, $secure_password);
+        }
 
-	protected $account; // Учетная запись
-	protected $secure_password; // Cекретный код
-	protected $date;
-	public $logger;
+        if ($this->isTestingApiKeys($account, $secure_password)) {
+            $this->base_url = self::BASE_TEST_URL;
+            $this->ajax_url = self::AJAX_TEST_URL;
+        }
 
-	private $version = "1.0"; // Версия модуля
-	private static $ext_dir;
+        if (!$date) {
+            $default_timezone = date_default_timezone_get();
+            date_default_timezone_set('UTC');
+            $date = date('Y-m-d', time() + 10800);
+            date_default_timezone_set($default_timezone);
+        }
 
-	public $error; // Ошибки при выполнении метода
-	public $curl_url;
-	public $curl_data;
-	public $curl_success;
-
-	const TEST_ACCOUNT = 'wqGwiQx0gg8mLtiEKsUinjVSICCjtTEP';
-	const TEST_SECURE_PASSWORD = 'RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5';
-
-	const BASE_TEST_URL = 'https://integration.edu.cdek.ru/';
-	const AJAX_TEST_URL = 'https://api.edu.cdek.ru/';
-
-
-	public function __construct($account = '', $secure_password = '', $date = '') {
-
-		if (!empty($account) &&  !empty($secure_password)) {
-			$this->setAuth($account, $secure_password);
-		}
-
-		if ($this->isTestingApiKeys($account, $secure_password)) {
-
-			$this->base_url = self::BASE_TEST_URL;
-			$this->ajax_url = self::AJAX_TEST_URL;
-		}
-
-		if (!$date) {
-
-			$default_timezone = date_default_timezone_get();
-
-			date_default_timezone_set('UTC');
-
-			$date = date('Y-m-d', time() + 10800);
-
-			date_default_timezone_set($default_timezone);
-
-		}
-
-		$this->setDate($date);
-
-		$this->init();
-	}
-
-	/**
-	 * Установка планируемой даты отправки
-	 *
-	 * @param string $date дата планируемой отправки, например '2014-06-25'
-	 */
-	public function setDate($date) {
-		$this->date = $date;
-	}
-
-	/**
-	 * Авторизация ИМ
-	 *
-	 * @param string $account логин
-	 * @param string $secure_password пароль
-	 */
-	public function setAuth($account, $secure_password) {
-		$this->account = $account;
-		$this->secure_password = $secure_password;
-	}
-
-	protected function setLogger($filename){
-	    $this->logger = new cdek_logger($filename);
+        $this->setDate($date);
+        $this->init();
     }
 
-	/**
-	 * Защифрованный пароль для передачи на сервер
-	 *
-	 * @return string
-	 */
-	protected function getSecure() {
-		return md5($this->date . '&' . $this->secure_password);
-	}
 
-	public function loadComponent($component) {
-		if (!class_exists($component)) return null;
-		return new $component($this->account, $this->secure_password, $this->date);
-	}
+    /**
+     * Sets planned shipment date.
+     *
+     * @param string $date For example: 2014-06-25.
+     */
+    public function setDate($date)
+    {
+        $this->date = $date;
+    }
 
-	public function sendData(exchange $component) {
 
-		$action = $this->ajax_url . $component->getMethod();
-		$parser = method_exists($component, 'getParser') ? $component->getParser() : new parser_json();
+    /**
+     * Sets account credentials.
+     *
+     * @param string $account Login.
+     * @param string $secure_password Secret key.
+     */
+    public function setAuth($account, $secure_password)
+    {
+        $this->account = $account;
+        $this->secure_password = $secure_password;
+    }
 
-		$response = $this->getURL($action, $parser, $component->getData());
 
-		// Обнуление массива ошибок
-		$this->error = array();
+    protected function setLogger($filename)
+    {
+        $this->logger = new cdek_logger($filename);
+    }
 
-		return method_exists($component, 'prepareResponse') ? $component->prepareResponse($response, $this->error) : $response;
-	}
 
-	protected function getURL($url, response_parser $parser, $data = array()) {
+    /**
+     * Builds secure signature from date and secret.
+     *
+     * @return string
+     */
+    protected function getSecure()
+    {
+        return md5($this->date . '&' . $this->secure_password);
+    }
 
-		$info = $this->loadComponent('info');
 
-		$auth_data = $info->getAuthToken();
+    /**
+     * Loads and instantiates a component by class name.
+     *
+     * @param string $component
+     * @return mixed|null
+     */
+    public function loadComponent($component)
+    {
+        if (!class_exists($component)) {
+            return null;
+        }
 
-		$ch = curl_init();
-		$this->curl_url = $url;
-		$this->curl_data = $data;
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            'Authorization: Bearer ' . (!empty($auth_data['access_token']) ? $auth_data['access_token'] : ""),
-			'Content-Type: application/json')
-		);
+        return new $component($this->account, $this->secure_password, $this->date);
+    }
 
-		if (isset($data['delete']) && $data['delete'] == true) {
-			curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
-			unset($data['delete']);
-		}
 
-		curl_setopt($ch, CURLOPT_TIMEOUT, 20);		
+    /**
+     * Sends component data to CDEK API and returns parsed response.
+     *
+     * @param exchange $component
+     * @return mixed
+     */
+    public function sendData(exchange $component)
+    {
+        $action = $this->ajax_url . $component->getMethod();
+        $parser = ($component instanceof exchange_parser) ? $component->getParser() : new parser_json();
 
-		if (!empty($data)) {
-			curl_setopt($ch, CURLOPT_POST, 1);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-		}
+        $response = $this->getURL($action, $parser, $component->getData());
+        $this->error = array();
 
-		$out = curl_exec($ch);
+        return ($component instanceof exchange_preparer)
+            ? $component->prepareResponse($response, $this->error)
+            : $response;
+    }
 
-		curl_close($ch);
-		$this->curl_success = $out;
-		$parser->setData($out);
 
-		return $parser->getData();
-	}
+    /**
+     * Executes HTTP request and parses the response via parser strategy.
+     *
+     * @param string $url
+     * @param response_parser $parser
+     * @param array $data
+     * @return mixed
+     */
+    protected function getURL($url, response_parser $parser, $data = array())
+    {
+        $info = $this->loadComponent('info');
+        $auth_data = $info->getAuthToken();
 
-	public function getMethod() {
-		return $this->method;
-	}
+        $ch = curl_init();
+        $this->curl_url = $url;
+        $this->curl_data = $data;
 
-	private function init() {
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+        curl_setopt(
+            $ch,
+            CURLOPT_HTTPHEADER,
+            array(
+                'Authorization: Bearer ' . (!empty($auth_data['access_token']) ? $auth_data['access_token'] : ""),
+                'Content-Type: application/json'
+            )
+        );
 
-		spl_autoload_register(array($this, 'autoloader'));
-		spl_autoload_extensions('.php');
-		self::$ext_dir = dirname(__FILE__);
+        if (isset($data['delete']) && $data['delete'] == true) {
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
+            unset($data['delete']);
+        }
+
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+
+        if (!empty($data)) {
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        }
+
+        $out = curl_exec($ch);
+        curl_close($ch);
+
+        $this->curl_success = $out;
+        $parser->setData($out);
+
+        return $parser->getData();
+    }
+
+
+    public function getMethod()
+    {
+        return $this->method;
+    }
+
+
+    /**
+     * Initializes autoloader and logger.
+     */
+    private function init()
+    {
+        spl_autoload_register(array($this, 'autoloader'));
+        spl_autoload_extensions('.php');
+        self::$ext_dir = dirname(__FILE__);
         $this->setLogger('cdek_integrator.log');
-	}
+    }
 
-	private function isTestingApiKeys($account, $secure) {
-		return $account == self::TEST_ACCOUNT && $secure == self::TEST_SECURE_PASSWORD;
-	}
 
-	public function getTestAccount() {
-		return self::TEST_ACCOUNT;
-	}
+    /**
+     * Checks if provided credentials are test credentials.
+     *
+     * @param string $account
+     * @param string $secure
+     * @return bool
+     */
+    private function isTestingApiKeys($account, $secure)
+    {
+        return $account == self::TEST_ACCOUNT && $secure == self::TEST_SECURE_PASSWORD;
+    }
 
-	public function getTestSecure() {
-		return self::TEST_SECURE_PASSWORD;
-	}
 
-	static public function autoloader($class_name) {
-		if (class_exists($class_name)) return;
+    public function getTestAccount()
+    {
+        return self::TEST_ACCOUNT;
+    }
 
-		$folders = array(DIR_SYSTEM.'library/cdek_integrator/', DIR_SYSTEM.'library/cdek_integrator/components/');
 
-		foreach ($folders as $folder) {
+    public function getTestSecure()
+    {
+        return self::TEST_SECURE_PASSWORD;
+    }
 
-			foreach (array('class', 'interface') as $type) {
 
-				$file_name = $folder . $type . '.' . $class_name . '.php';
+    /**
+     * Autoload classes and interfaces from cdek_integrator folders.
+     *
+     * @param string $class_name
+     * @return void
+     */
+    static public function autoloader($class_name)
+    {
+        if (class_exists($class_name)) {
+            return;
+        }
 
-				if (file_exists($file_name)) {
-					return require_once $file_name;
-				}
-			}
+        $folders = array(
+            DIR_SYSTEM . 'library/cdek_integrator/',
+            DIR_SYSTEM . 'library/cdek_integrator/components/'
+        );
 
-		}
-	}
+        foreach ($folders as $folder) {
+            foreach (array('class', 'interface') as $type) {
+                $file_name = $folder . $type . '.' . $class_name . '.php';
 
+                if (file_exists($file_name)) {
+                    require_once $file_name;
+                    return;
+                }
+            }
+        }
+    }
 }
-
-?>

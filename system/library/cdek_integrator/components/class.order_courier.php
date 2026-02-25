@@ -1,26 +1,30 @@
-<?php  
-class order_courier extends cdek_integrator implements exchange {
-	
+<?php
+
+class order_courier extends cdek_integrator implements exchange
+{
 	protected $method = 'v2/intakes';
 
 	private $post;
 
 	public $number;
-	
-	public function setData($data) {
+
+	public function setData($data)
+	{
 		$this->post = $this->createPost($data);
 	}
 
-	public function setNumber($number) {
+	public function setNumber($number)
+	{
 		$this->number = $number;
 	}
-	
-	public function getData(){
+
+	public function getData()
+	{
 		return $this->post;
 	}
 
-	private function createPost($data = array()) {
-		
+	private function createPost($data = array())
+	{
 		$post['order_uuid'] = $this->number;
 
 		if ($data['date'] != '') {
@@ -42,10 +46,7 @@ class order_courier extends cdek_integrator implements exchange {
 		if ($data['lunch_end'] != '') {
 			$post['lunch_time_to'] = $data['lunch_end'];
 		}
-		
+
 		return $post;
 	}
-	
 }
-
-?>

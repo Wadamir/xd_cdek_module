@@ -160,7 +160,6 @@ class ModelExtensionShippingCdek extends Model
             if ($cdekZoneData) {
                 $address['city'] = $cdekZoneData['cityName'];
             }
-
         }
 
         if ($to_data && $address['city']) {
@@ -182,7 +181,6 @@ class ModelExtensionShippingCdek extends Model
                     $address['city'] = $city;
                     break;
                 }
-
             }
 
             if (is_array($cdek_cities)) {
@@ -198,7 +196,6 @@ class ModelExtensionShippingCdek extends Model
                     $city_ignore = array_map('trim', $city_ignore);
                     $city_ignore = array_filter($city_ignore);
                     $city_ignore = array_map(array($this, '_clear'), $city_ignore);
-
                 }
 
                 if (in_array($address['city'], $city_ignore)) {
@@ -214,9 +211,7 @@ class ModelExtensionShippingCdek extends Model
                         if (mb_strpos($this->_clear($city), $address['city']) === 0) {
                             $available[] = $city_info;
                         }
-
                     }
-
                 }
 
                 if ($this->config->get('shipping_cdek_use_region_russia')) {
@@ -303,16 +298,16 @@ class ModelExtensionShippingCdek extends Model
                         }
                     }
 
-                    if (!file_exists(DIR_APPLICATION . 'model' . DIRECTORY_SEPARATOR . 'extension' . DIRECTORY_SEPARATOR . 'shipping' . DIRECTORY_SEPARATOR . 'CalculatePriceDeliveryCdek.php')) {
+                    if (!file_exists(DIR_APPLICATION . 'model' . DIRECTORY_SEPARATOR . 'extension' . DIRECTORY_SEPARATOR . 'shipping' . DIRECTORY_SEPARATOR . 'cdek_calculate_price.php')) {
 
                         if ($this->config->get('shipping_cdek_log')) {
-                            $this->log->write('СДЭК: file CalculatePriceDeliveryCdek.php not found!');
+                            $this->log->write('СДЭК: file cdek_calculate_price.php not found!');
                         }
 
                         return;
                     }
 
-                    require_once DIR_APPLICATION . 'model' . DIRECTORY_SEPARATOR . 'extension' . DIRECTORY_SEPARATOR . 'shipping' . DIRECTORY_SEPARATOR . 'CalculatePriceDeliveryCdek.php';
+                    require_once DIR_APPLICATION . 'model' . DIRECTORY_SEPARATOR . 'extension' . DIRECTORY_SEPARATOR . 'shipping' . DIRECTORY_SEPARATOR . 'cdek_calculate_price.php';
 
                     if (!class_exists('CalculatePriceDeliveryCdek')) {
 
@@ -374,7 +369,6 @@ class ModelExtensionShippingCdek extends Model
                                 }
                                 break;
                         }
-
                     } else {
 
                         foreach ($products as $product) {
@@ -422,7 +416,6 @@ class ModelExtensionShippingCdek extends Model
 
                             $calc->addGoodsItemBySize((int)$weight, (int)$length, (int)$width, (int)$height);
                         }
-                        
                     }
                     if (!$weight) {
 
@@ -454,7 +447,6 @@ class ModelExtensionShippingCdek extends Model
                                 foreach ($query->rows as $row) {
                                     $geo_zones[$row['geo_zone_id']] = $row['geo_zone_id'];
                                 }
-
                             }
 
                             if ($this->customer->isLogged()) {
@@ -506,7 +498,6 @@ class ModelExtensionShippingCdek extends Model
                                     if (!$intersect) {
                                         continue;
                                     }
-
                                 } else {
                                     $key = 'all';
                                 }
@@ -540,7 +531,6 @@ class ModelExtensionShippingCdek extends Model
                                         array_multisort($sort_order, SORT_ASC, $items);
 
                                         $items = reset($items);
-
                                     } elseif (count($items) == 1) {
                                         $items = reset($items);
                                     } else {
@@ -572,7 +562,6 @@ class ModelExtensionShippingCdek extends Model
                                                 $exTariffList['postamat'][] = $result;
                                             }
                                         }
-
                                     }
 
                                     $set_dver = false;
@@ -603,7 +592,6 @@ class ModelExtensionShippingCdek extends Model
                                     if ($set_postamat) {
                                         $results[] = $set_postamat;
                                     }
-
                                 } else {
 
                                     foreach ($tariff_list as $tariff_info) {
@@ -613,9 +601,7 @@ class ModelExtensionShippingCdek extends Model
                                         if ($result = $this->getResult($calc, $total)) {
                                             $results[] = $result;
                                         }
-
                                     }
-
                                 }
 
                                 if (!empty($results)) {
@@ -693,7 +679,6 @@ class ModelExtensionShippingCdek extends Model
                                                 } else {
                                                     $price = (float)$markup;
                                                 }
-
                                             }
 
                                             if (!empty($customer_tariff_info['title'][$this->config->get('config_language_id')])) {
@@ -767,11 +752,9 @@ class ModelExtensionShippingCdek extends Model
                                                         //$names[$pvz_info['code']/* . '_' . $key*/] = $description . ' Пункт выдачи заказов: ' . $pvz_info['address'];
                                                         $names[$pvz_info['code']/* . '_' . $key*/] = $description;
                                                     }
-
                                                 } else {
                                                     $names[] = $description;
                                                 }
-
                                             } else if (in_array($tariff_info['mode_id'], array(6, 7))) {
                                                 if ($usePVZ && !$postamat_list) continue;
 
@@ -785,11 +768,9 @@ class ModelExtensionShippingCdek extends Model
                                                         //$names[$pvz_info['code']/* . '_' . $key*/] = $description . ' Пункт выдачи заказов: ' . $pvz_info['address'];
                                                         $names[$pvz_info['code']/* . '_' . $key*/] = $description;
                                                     }
-
                                                 } else {
                                                     $names[] = $description;
                                                 }
-
                                             } else {
                                                 $names[] = $description;
                                             }
@@ -818,46 +799,35 @@ class ModelExtensionShippingCdek extends Model
                                                     'tax_class_id' => $this->config->get('shipping_cdek_tax_class_id'),
                                                     'text' => $this->currency->format($this->tax->calculate($price, $this->config->get('shipping_cdek_tax_class_id'), $this->config->get('config_tax')), $currency)
                                                 );
-
                                             }
-
                                         }
-
                                     }
-
                                 } else {
 
                                     if ($this->config->get('shipping_cdek_log')) {
                                         $this->log->write('СДЭК: нет результатов для вывода!');
                                     }
-
                                 }
                             }
                         }
                     }
-
                 } else {
 
                     if ($this->config->get('shipping_cdek_log')) {
                         $this->log->write('СДЭК: не определен подходящий город!');
                     }
-
                 }
-
             } else {
 
                 if ($this->config->get('shipping_cdek_log')) {
                     $this->log->write('СДЭК: город доставки не определен!');
                 }
-
             }
-
         } else {
 
             if ($this->config->get('shipping_cdek_log')) {
                 $this->log->write('СДЭК: город доставки не найден!');
             }
-
         }
 
         $method_data = array();
@@ -941,7 +911,6 @@ class ModelExtensionShippingCdek extends Model
             if (!$this->config->get('shipping_cdek_cache_on_delivery') || !array_key_exists('cashOnDelivery', $response) || ($this->config->get('shipping_cdek_cache_on_delivery') && (float)$response['cashOnDelivery'] && $total >= (float)$response['cashOnDelivery'])) {
                 $result = $response;
             }
-
         } else {
 
             $error = $calc->getError();
@@ -951,7 +920,6 @@ class ModelExtensionShippingCdek extends Model
                     $this->log->write('СДЭК: ' . $error_info['text']);
                 }
             }
-
         }
 
         return $result;
@@ -990,7 +958,6 @@ class ModelExtensionShippingCdek extends Model
 
                         continue;
                     }
-
                 }
 
                 $pvz_address = 'г. ' . $pvz_info['location']['city'] . ', ' . $this->mb_ucfirst($pvz_info['location']['address']) . '.';
@@ -1026,13 +993,11 @@ class ModelExtensionShippingCdek extends Model
                     'info' => $full_info
                 )
             );
-
         } elseif (!empty($pvz_list_data['ErrorCode'])) {
 
             if ($this->config->get('shipping_cdek_log')) {
                 $this->log->write('СДЭК: В выбранном городе ПВЗ отсутствуют!');
             }
-
         }
 
         return $pvz_list;
@@ -1068,7 +1033,6 @@ class ModelExtensionShippingCdek extends Model
                     if (!$intersect) {
                         $item_status = FALSE;
                     }
-
                 }
 
                 if (!isset($discount_info['tariff_id'])) $discount_info['tariff_id'] = array();
@@ -1076,9 +1040,7 @@ class ModelExtensionShippingCdek extends Model
                 if ($item_status && (float)$discount_info['total'] <= $total && (!$discount_info['tariff_id'] || in_array($tariff_Id, $discount_info['tariff_id']))) {
                     $discounts[$discount_info['prefix'] . '_' . $discount_info['mode']] = $discount_info;
                 }
-
             }
-
         }
 
         return $discounts;
@@ -1151,7 +1113,7 @@ class ModelExtensionShippingCdek extends Model
 
     private function ocToCdek($region_name = '')
     {
-        
+
         if ($region_name) {
             $region_name = str_replace('обл.', 'область', $region_name);
             $region_name = str_replace('АО', 'авт. округ', $region_name);
@@ -1160,7 +1122,7 @@ class ModelExtensionShippingCdek extends Model
                 $region_name .= " респ.";
             }
         }
-        
+
         return trim($region_name);
     }
 
@@ -1170,32 +1132,32 @@ class ModelExtensionShippingCdek extends Model
 
         $cdek_default_param = $this->config->get('shipping_cdek_default_param');
 
-//        if ($cdek_default_param['use']) {
-//
-//            switch ($cdek_default_param['work_mode']) {
-//                case 'order':
-//                    $weight = $cdek_default_param['weight'];
-//                    break;
-//                case 'all':
-//                case 'optional':
-//                    $weight = 0;
-//                    foreach ($products as $product) {
-//
-//                        if ($cdek_default_param['work_mode'] == 'all') {
-//                            $weight += $cdek_default_param['weight'];
-//                        } else {
-//                            if ((float)$product['weight'] > 0) {
-//                                $weight += $this->weight->convert($product['weight'], $product['weight_class_id'], $this->weight_class_id);
-//                            } else {
-//                                $weight += $cdek_default_param['weight'];
-//                            }
-//                        }
-//                    }
-//                    break;
-//            }
-//        } else {
-//            $weight = $this->cart->getWeight();
-//        }
+        //        if ($cdek_default_param['use']) {
+        //
+        //            switch ($cdek_default_param['work_mode']) {
+        //                case 'order':
+        //                    $weight = $cdek_default_param['weight'];
+        //                    break;
+        //                case 'all':
+        //                case 'optional':
+        //                    $weight = 0;
+        //                    foreach ($products as $product) {
+        //
+        //                        if ($cdek_default_param['work_mode'] == 'all') {
+        //                            $weight += $cdek_default_param['weight'];
+        //                        } else {
+        //                            if ((float)$product['weight'] > 0) {
+        //                                $weight += $this->weight->convert($product['weight'], $product['weight_class_id'], $this->weight_class_id);
+        //                            } else {
+        //                                $weight += $cdek_default_param['weight'];
+        //                            }
+        //                        }
+        //                    }
+        //                    break;
+        //            }
+        //        } else {
+        //            $weight = $this->cart->getWeight();
+        //        }
 
         $weight = $this->cart->getWeight();
 
@@ -1228,7 +1190,6 @@ class ModelExtensionShippingCdek extends Model
             } else {
                 $weight -= (float)min($packing_weight, $weight);
             }
-
         } elseif ($packing_min_weight) {
             $weight += $packing_min_weight;
         }
@@ -1266,9 +1227,13 @@ class ModelExtensionShippingCdek extends Model
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        curl_setopt(
+            $ch,
+            CURLOPT_HTTPHEADER,
+            array(
                 'Authorization: Bearer ' . $this->auth_data['access_token'],
-                'Content-Type: application/json')
+                'Content-Type: application/json'
+            )
         );
         curl_setopt($ch, CURLOPT_TIMEOUT, 3);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
@@ -1318,7 +1283,6 @@ class ModelExtensionShippingCdek extends Model
 
         return $period;
     }
-
 }
 
 abstract class response_parser
@@ -1331,7 +1295,7 @@ abstract class response_parser
         $this->data = $data;
     }
 
-    abstract protected function getData();
+    abstract public function getData();
 }
 
 class parser_json extends response_parser
@@ -1341,7 +1305,6 @@ class parser_json extends response_parser
     {
         return json_decode($this->data, TRUE);
     }
-
 }
 
 class parser_xml extends response_parser
@@ -1351,7 +1314,4 @@ class parser_xml extends response_parser
     {
         return (strpos($this->data, '<?xml') === 0) ? new SimpleXMLElement($this->data) : '';
     }
-
 }
-
-?>

@@ -5,12 +5,12 @@ class ControllerExtensionPaymentCodCdek extends Controller
 
     public function index()
     {
-        $this->load->model('tool/cdektool');
+        $this->load->model('tool/cdek_tool');
 
         $this->checkInstall();
 
-        if (!$this->model_tool_cdektool->check()) {
-            $this->response->redirect($this->url->link('tool/cdektool', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+        if (!$this->model_tool_cdek_tool->check()) {
+            $this->response->redirect($this->url->link('tool/cdek_tool', 'user_token=' . $this->session->data['user_token'], 'SSL'));
         }
 
         $this->load->language('extension/payment/cod_cdek');
@@ -275,7 +275,7 @@ class ControllerExtensionPaymentCodCdek extends Controller
 
     public function checkInstall()
     {
-        $status = $this->model_tool_cdektool->checkInstalled('payment', 'cod_cdek');
+        $status = $this->model_tool_cdek_tool->checkInstalled('payment', 'cod_cdek');
 
         if (!$status) {
             $this->install();

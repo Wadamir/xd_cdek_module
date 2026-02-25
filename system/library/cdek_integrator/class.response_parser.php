@@ -1,14 +1,13 @@
-<?php  
+<?php
 
-abstract class response_parser {
-	
+abstract class response_parser
+{
 	protected $data;
-	
-	public function setData($data) {
+
+	public function setData($data)
+	{
 		$this->data = $data;
 	}
-	
-	abstract protected function getData();
-}
 
-?>
+	abstract public function getData();
+}

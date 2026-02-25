@@ -25,7 +25,7 @@
 !admin/controller/extension/total/
 !admin/controller/extension/total/cdek.php
 !admin/controller/tool/
-!admin/controller/tool/cdektool.php
+!admin/controller/tool/cdek_tool.php
 !admin/language/
 !admin/language/*/
 !admin/language/*/extension/
@@ -42,7 +42,7 @@
 !admin/model/extension/module/
 !admin/model/extension/module/cdek_integrator.php
 !admin/model/tool/
-!admin/model/tool/cdektool.php
+!admin/model/tool/cdek_tool.php
 !admin/view/
 !admin/view/image/
 !admin/view/image/cdek/
@@ -71,12 +71,14 @@
 !admin/view/template/extension/shipping/cdek/*
 !admin/view/template/extension/total/
 !admin/view/template/extension/total/cdek.*
+!admin/view/template/tool/
+!admin/view/template/tool/cdek_tool.*
 
 # CDEK Module files (catalog)
 !catalog/
 !catalog/controller/
 !catalog/controller/event/
-!catalog/controller/event/cdekshipping.php
+!catalog/controller/event/cdek_shipping.php
 !catalog/controller/extension/
 !catalog/controller/extension/payment/
 !catalog/controller/extension/payment/cod_cdek.php
@@ -97,22 +99,22 @@
 !catalog/model/extension/payment/cod_cdek.php
 !catalog/model/extension/shipping/
 !catalog/model/extension/shipping/cdek.php
-!catalog/model/extension/shipping/CalculatePriceDeliveryCdek.php
+!catalog/model/extension/shipping/cdek_calculate_price.php
 !catalog/model/extension/total/
 !catalog/model/extension/total/cdek.php
 !catalog/view/
 !catalog/view/javascript/
-!catalog/view/javascript/sdek.js
+!catalog/view/javascript/cdek.js
 !catalog/view/theme/
 !catalog/view/theme/default/
 !catalog/view/theme/default/stylesheet/
-!catalog/view/theme/default/stylesheet/sdek.css
+!catalog/view/theme/default/stylesheet/cdek.css
 !catalog/view/theme/default/template/
 !catalog/view/theme/default/template/extension/
 !catalog/view/theme/default/template/extension/payment/
 !catalog/view/theme/default/template/extension/payment/cod_cdek.*
 !catalog/view/theme/default/template/extension/shipping/
-!catalog/view/theme/default/template/extension/shipping/sdek.*
+!catalog/view/theme/default/template/extension/shipping/cdek.*
 
 # CDEK Module files (system)
 !system/

@@ -1,4111 +1,4044 @@
 <?php
-class ControllerExtensionModuleCdekIntegrator extends Controller {
+class ControllerExtensionModuleCdekIntegrator extends Controller
+{
 
-	const VERSION = 1.0;
-	private $api;
-	private $error = array();
-	private $time_execute;
-	private $new_application;
-	private $setting;
-	private $limits = array(15, 30, 45, 60, 75);
+    const VERSION = 1.0;
+    private $api;
+    private $error = array();
+    private $time_execute;
+    private $new_application;
+    private $setting;
+    private $limits = array(15, 30, 45, 60, 75);
 
-	public function __construct($registry) {
+    public function __construct($registry)
+    {
 
-		parent::__construct($registry);
-		$this->init();
-	}
+        parent::__construct($registry);
+        $this->init();
+    }
 
-	public function index() {
+    public function index()
+    {
 
-		$this->load->model('tool/cdektool');
+        $this->load->model('tool/cdek_tool');
 
-		$this->checkInstall();
+        $this->checkInstall();
 
-		if(!$this->model_tool_cdektool->check())
-		{
-			$this->response->redirect($this->url->link('tool/cdektool', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-		}
+        if (!$this->model_tool_cdek_tool->check()) {
+            $this->response->redirect($this->url->link('tool/cdek_tool', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+        }
 
-		$this->load->language('extension/module/cdek_integrator');
-		$this->load->model('extension/module/cdek_integrator');
+        $this->load->language('extension/module/cdek_integrator');
+        $this->load->model('extension/module/cdek_integrator');
 
-		$rdata['heading_title'] = $this->language->get('heading_title_main');
+        $rdata['heading_title'] = $this->language->get('heading_title_main');
 
-		$rdata['text_enabled'] = $this->language->get('text_enabled');
-		$rdata['text_disabled'] = $this->language->get('text_disabled');
-		$rdata['text_no_results'] = $this->language->get('text_no_results');
+        $rdata['text_enabled'] = $this->language->get('text_enabled');
+        $rdata['text_disabled'] = $this->language->get('text_disabled');
+        $rdata['text_no_results'] = $this->language->get('text_no_results');
 
-		$rdata['entry_layout'] = $this->language->get('entry_layout');
-		$rdata['entry_position'] = $this->language->get('entry_position');
-		$rdata['entry_status'] = $this->language->get('entry_status');
-		$rdata['entry_sort_order'] = $this->language->get('entry_sort_order');
+        $rdata['entry_layout'] = $this->language->get('entry_layout');
+        $rdata['entry_position'] = $this->language->get('entry_position');
+        $rdata['entry_status'] = $this->language->get('entry_status');
+        $rdata['entry_sort_order'] = $this->language->get('entry_sort_order');
 
-		$rdata['column_dispatch_number'] = $this->language->get('column_dispatch_number');
-		$rdata['column_dispatch_total_orders'] = $this->language->get('column_dispatch_total_orders');
-		$rdata['column_dispatch_date'] = $this->language->get('column_dispatch_date');
+        $rdata['column_dispatch_number'] = $this->language->get('column_dispatch_number');
+        $rdata['column_dispatch_total_orders'] = $this->language->get('column_dispatch_total_orders');
+        $rdata['column_dispatch_date'] = $this->language->get('column_dispatch_date');
 
-		$rdata['button_cancel'] = $this->language->get('button_cancel');
-		$rdata['button_option'] = $this->language->get('button_option');
-		$rdata['button_new_order'] = $this->language->get('button_new_order');
+        $rdata['button_cancel'] = $this->language->get('button_cancel');
+        $rdata['button_option'] = $this->language->get('button_option');
+        $rdata['button_new_order'] = $this->language->get('button_new_order');
 
- 		if (isset($this->error['warning'])) {
-			$rdata['error_warning'] = $this->error['warning'];
-		} else {
-			$rdata['error_warning'] = '';
-		}
+        if (isset($this->error['warning'])) {
+            $rdata['error_warning'] = $this->error['warning'];
+        } else {
+            $rdata['error_warning'] = '';
+        }
 
-		if (isset($this->session->data['success'])) {
-			$rdata['success'] = $this->session->data['success'];
+        if (isset($this->session->data['success'])) {
+            $rdata['success'] = $this->session->data['success'];
 
-			unset($this->session->data['success']);
-		} else {
-			$rdata['success'] = '';
-		}
+            unset($this->session->data['success']);
+        } else {
+            $rdata['success'] = '';
+        }
 
-  		$rdata['breadcrumbs'] = array();
+        $rdata['breadcrumbs'] = array();
 
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('text_home'),
-			'href'      => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], 'SSL'),
-   		);
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('text_home'),
+            'href'      => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], 'SSL'),
+        );
 
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('text_extension'),
-			'href'      => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
-   		);
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('text_extension'),
+            'href'      => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
+        );
 
 
-		$title = $this->language->get('heading_title_bk_main');
+        $title = $this->language->get('heading_title_bk_main');
 
-		$new_orders = 0;
+        $new_orders = 0;
 
-		if (!$this->new_application) {
+        if (!$this->new_application) {
 
-			$exdata = array(
-				'filter_dispatch' => true
-			);
+            $exdata = array(
+                'filter_dispatch' => true
+            );
 
-			if (!empty($this->setting['new_order_status_id'])) {
-				$exdata['filter_order_status_id']	= $this->setting['new_order_status_id'];
-			}
+            if (!empty($this->setting['new_order_status_id'])) {
+                $exdata['filter_order_status_id']    = $this->setting['new_order_status_id'];
+            }
 
-			if (!empty($this->setting['new_order'])) {
-				$exdata['filter_new_order'] = $this->setting['new_order'];
-			}
+            if (!empty($this->setting['new_order'])) {
+                $exdata['filter_new_order'] = $this->setting['new_order'];
+            }
 
-			if (!empty($this->setting['shipping_method'])) {
-				$exdata['filter_shipping'] = $this->setting['shipping_method'];
-			}
+            if (!empty($this->setting['shipping_method'])) {
+                $exdata['filter_shipping'] = $this->setting['shipping_method'];
+            }
 
-			if (!empty($this->setting['payment_method'])) {
-				$exdata['filter_payment'] = $this->setting['payment_method'];
-			}
-
-			$new_orders = $this->model_extension_module_cdek_integrator->getTotalOrders($exdata);
-
-			if ($new_orders)  {
-				$title .= ' (' . $new_orders . ')';
-			}
-
-		} else { // first load
-			$rdata['attention'] = 'Для работы модуля необходимо выполнить настройку.';
-		}
-
-		$rdata['total'] = $new_orders;
-
-		$this->document->setTitle($title);
-
-		$rdata['dispatches'] = array();
-
-		$exdata = array(
-			'limit' => 6,
-			'sort'	=> 'd.date',
-			'order' => 'DESC'
-		);
-
-		$results = $this->model_extension_module_cdek_integrator->getDispatchList($exdata);
-
-		foreach ($results as $dispatch_info) {
-
-			$action = array();
-
-			$action[] = array(
-				'text' => $this->language->get('text_view'),
-				'href' => $this->url->link('extension/module/cdek_integrator/dispatchView', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $dispatch_info['order_id'], 'SSL')
-			);
-
-			$rdata['dispatches'][] = array(
-				'order_id'				=> $dispatch_info['order_id'],
-				'dispatch_number'		=> $dispatch_info['dispatch_number'],
-				'cdek_number'           => $dispatch_info['cdek_number'],
-				'act_number'			=> $dispatch_info['act_number'],
-				'date'					=> $this->formatDate($dispatch_info['date']),
-				'city_name'				=> $dispatch_info['city_name'],
-				'shipment_point'		=> $this->setting['shipment_point_default'],
-				'recipient_city_name'	=> $dispatch_info['recipient_city_name'],
-				'status'				=> $dispatch_info['status_description'],
-				'status_date'			=> $this->formatDate($dispatch_info['status_date']),
-				'cost'					=> (float)$dispatch_info['delivery_cost'] ? $this->currency->format($dispatch_info['delivery_cost'], $this->config->get('config_currency')) : 0,
-				'sync'					=> $this->url->link('extension/module/cdek_integrator/dispatchSync', 'user_token=' . $this->session->data['user_token'] . '&target=list&order_id=' . $dispatch_info['order_id'], 'SSL'),
-				'action'				=> $action
-			);
-
-		}
-
-		$rdata['dispatch_list'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL');
-
-		$rdata['order'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'], 'SSL');
-		$rdata['option'] = $this->url->link('extension/module/cdek_integrator/option', 'user_token=' . $this->session->data['user_token'], 'SSL');
-		$rdata['update_city'] = $this->url->link('extension/module/cdek_integrator/updateCities', 'user_token=' . $this->session->data['user_token'], true);
-		$rdata['cancel'] = $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true);
-
-		$rdata['header'] = $this->load->controller('common/header');
-		$rdata['column_left'] = $this->load->controller('common/column_left');
-		$rdata['footer'] = $this->load->controller('common/footer');
-
-		$this->response->setOutput($this->templateOutput('cdek_integrator', $rdata));
-	}
-
-	private function formatDate($timestamp, $time = TRUE, $correct = TRUE) {
-
-		$send_time = date('d.m.Y', $timestamp);
-
-		if (date('d.n.Y') == $send_time) {
-			$date = $this->language->get('text_today');
-		} elseif (date('d.n.Y', strtotime('-1 day')) == $send_time) {
-			$date = $this->language->get('text_yesterday');
-		} elseif (date('Y') == date('Y', $timestamp)) {
-			$date = date('j', $timestamp) . ' ' . $this->getMonth(date('n', $timestamp));
-		} else {
-			$date = date('j', $timestamp) . ' ' . $this->getMonth(date('n', $timestamp)) . ' ' . date('Y', $timestamp);
-		}
-
-		if ($time) {
-			$date .= ', ' . date('H:i', $timestamp);
-		}
-
-		if ($correct && date('Z', $timestamp)) {
-			$date .= ' <strong>UTC' . date('P', $timestamp) . '</strong>';
-		}
-
-		return $date;
-	}
-
-	public function getMonth($number) {
-
-		$month = '';
-
-		switch ($number) {
-			case 1:
-				$month = 'января';
-				break;
-			case 2:
-				$month = 'февраля';
-				break;
-			case 3:
-				$month = 'марта';
-				break;
-			case 4:
-				$month = 'апреля';
-				break;
-			case 5:
-				$month = 'мая';
-				break;
-			case 6:
-				$month = 'июня';
-				break;
-			case 7:
-				$month = 'июля';
-				break;
-			case 8:
-				$month = 'августа';
-				break;
-			case 9:
-				$month = 'сентября';
-				break;
-			case 10:
-				$month = 'октября';
-				break;
-			case 11:
-				$month = 'ноября';
-				break;
-			case 12:
-				$month = 'декабря';
-				break;
-		}
-
-		return $month;
-	}
-
-
-	public function order() {
-
-		$this->document->setTitle($this->language->get('heading_title_order'));
-
-		$this->load->model('extension/module/cdek_integrator');
-
-		$this->orderList();
-	}
-
-	private function orderList() {
-
-		if ($this->new_application) {
-			$this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-		}
-
-		if (isset($this->request->get['filter_order_id'])) {
-			$filter_order_id = $this->request->get['filter_order_id'];
-		} else {
-			$filter_order_id = null;
-		}
-
-		if (isset($this->request->get['filter_customer'])) {
-			$filter_customer = $this->request->get['filter_customer'];
-		} else {
-			$filter_customer = null;
-		}
-
-		if (isset($this->request->get['filter_order_status_id'])) {
-			$filter_order_status_id = $this->request->get['filter_order_status_id'];
-		} else {
-			$filter_order_status_id = null;
-		}
-
-		if (!empty($this->setting['new_order_status_id']) && (!$filter_order_status_id || !in_array($filter_order_status_id, $this->setting['new_order_status_id']))) {
-			$filter_order_status_id = $this->setting['new_order_status_id'];
-		}
-
-		if (isset($this->request->get['filter_total'])) {
-			$filter_total = $this->request->get['filter_total'];
-		} else {
-			$filter_total = null;
-		}
-
-		if (isset($this->request->get['filter_date_added'])) {
-			$filter_date_added = $this->request->get['filter_date_added'];
-		} else {
-			$filter_date_added = null;
-		}
-
-		if (isset($this->request->get['sort'])) {
-			$sort = $this->request->get['sort'];
-		} else {
-			$sort = 'o.order_id';
-		}
-
-		if (isset($this->request->get['order'])) {
-			$order = $this->request->get['order'];
-		} else {
-			$order = 'DESC';
-		}
-
-		if (isset($this->request->get['page'])) {
-			$page = $this->request->get['page'];
-		} else {
-			$page = 1;
-		}
-
-		if (isset($this->request->get['limit']) && in_array($this->request->get['limit'], $this->limits)) {
-			$limit = $this->request->get['limit'];
-		} else {
-			$limit = reset($this->limits);
-		}
-
-		$url = '';
-
-		if (isset($this->request->get['filter_order_id'])) {
-			$url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
-		}
-
-		if (isset($this->request->get['filter_customer'])) {
-			$url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
-		}
-
-		if (isset($this->request->get['filter_order_status_id'])) {
-			$url .= '&filter_order_status_id=' . $this->request->get['filter_order_status_id'];
-		}
-
-		if (isset($this->request->get['filter_total'])) {
-			$url .= '&filter_total=' . $this->request->get['filter_total'];
-		}
-
-		if (isset($this->request->get['filter_date_added'])) {
-			$url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
-		}
-
-		if (isset($this->request->get['filter_date_modified'])) {
-			$url .= '&filter_date_modified=' . $this->request->get['filter_date_modified'];
-		}
-
-		if (isset($this->request->get['sort'])) {
-			$url .= '&sort=' . $this->request->get['sort'];
-		}
-
-		if (isset($this->request->get['order'])) {
-			$url .= '&order=' . $this->request->get['order'];
-		}
-
-		if (isset($this->request->get['page'])) {
-			$url .= '&page=' . $this->request->get['page'];
-		}
-
-		if (isset($this->request->get['limit'])) {
-			$url .= '&limit=' . $this->request->get['limit'];
-		}
-
-  		$rdata['breadcrumbs'] = array();
-
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('text_home'),
-			'href'      => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], 'SSL'),
-   		);
-
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('text_extension'),
-			'href'      => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
-   		);
-
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('heading_title_bk_main'),
-			'href'      => $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'),
-   		);
-
-		$rdata['create'] = html_entity_decode($this->url->link('extension/module/cdek_integrator/createOrder', 'user_token=' . $this->session->data['user_token'], 'SSL'), ENT_QUOTES, 'UTF-8');
-		$rdata['cancel'] = $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL');
-
-		$rdata['orders'] = array();
-
-		$exdata = array(
-			'filter_order_id'			=> $filter_order_id,
-			'filter_customer'			=> $filter_customer,
-			'filter_order_status_id'	=> $filter_order_status_id,
-			'filter_total'				=> $filter_total,
-			'filter_date_added'			=> $filter_date_added,
-			'filter_new_order'			=> $this->setting['new_order'],
-			'filter_dispatch'			=> TRUE,
-			'sort'						=> $sort,
-			'order'						=> $order,
-			'start'						=> ($page - 1) * $limit,
-			'limit'						=> $limit
-		);
-
-		if (!empty($this->setting['shipping_method'])) {
-			$exdata['filter_shipping'] = $this->setting['shipping_method'];
-		}
-
-		if (!empty($this->setting['payment_method'])) {
-			$exdata['filter_payment'] = $this->setting['payment_method'];
-		}
-
-		$results = $this->model_extension_module_cdek_integrator->getOrders($exdata);
-
-		$order_total = $this->model_extension_module_cdek_integrator->getTotalOrders($exdata);
-
-		/*if (!$order_total) {
+            if (!empty($this->setting['payment_method'])) {
+                $exdata['filter_payment'] = $this->setting['payment_method'];
+            }
+
+            $new_orders = $this->model_extension_module_cdek_integrator->getTotalOrders($exdata);
+
+            if ($new_orders) {
+                $title .= ' (' . $new_orders . ')';
+            }
+        } else { // first load
+            $rdata['attention'] = 'Для работы модуля необходимо выполнить настройку.';
+        }
+
+        $rdata['total'] = $new_orders;
+
+        $this->document->setTitle($title);
+
+        $rdata['dispatches'] = array();
+
+        $exdata = array(
+            'limit' => 6,
+            'sort'    => 'd.date',
+            'order' => 'DESC'
+        );
+
+        $results = $this->model_extension_module_cdek_integrator->getDispatchList($exdata);
+
+        foreach ($results as $dispatch_info) {
+
+            $action = array();
+
+            $action[] = array(
+                'text' => $this->language->get('text_view'),
+                'href' => $this->url->link('extension/module/cdek_integrator/dispatchView', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $dispatch_info['order_id'], 'SSL')
+            );
+
+            $rdata['dispatches'][] = array(
+                'order_id'                  => $dispatch_info['order_id'],
+                'dispatch_number'           => $dispatch_info['dispatch_number'],
+                'cdek_number'               => $dispatch_info['cdek_number'],
+                'act_number'                => $dispatch_info['act_number'],
+                'date'                      => $this->formatDate($dispatch_info['date']),
+                'city_name'                 => $dispatch_info['city_name'],
+                'shipment_point'            => $this->setting['shipment_point_default'],
+                'recipient_city_name'       => $dispatch_info['recipient_city_name'],
+                'status'                    => $dispatch_info['status_description'],
+                'status_date'               => $this->formatDate($dispatch_info['status_date']),
+                'cost'                      => (float)$dispatch_info['delivery_cost'] ? $this->currency->format($dispatch_info['delivery_cost'], $this->config->get('config_currency')) : 0,
+                'sync'                      => $this->url->link('extension/module/cdek_integrator/dispatchSync', 'user_token=' . $this->session->data['user_token'] . '&target=list&order_id=' . $dispatch_info['order_id'], 'SSL'),
+                'action'                    => $action
+            );
+        }
+
+        $rdata['dispatch_list'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL');
+
+        $rdata['order'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'], 'SSL');
+        $rdata['option'] = $this->url->link('extension/module/cdek_integrator/option', 'user_token=' . $this->session->data['user_token'], 'SSL');
+        $rdata['update_city'] = $this->url->link('extension/module/cdek_integrator/updateCities', 'user_token=' . $this->session->data['user_token'], true);
+        $rdata['cancel'] = $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true);
+
+        $rdata['header'] = $this->load->controller('common/header');
+        $rdata['column_left'] = $this->load->controller('common/column_left');
+        $rdata['footer'] = $this->load->controller('common/footer');
+
+        $this->response->setOutput($this->templateOutput('cdek_integrator', $rdata));
+    }
+
+    private function formatDate($timestamp, $time = TRUE, $correct = TRUE)
+    {
+
+        $send_time = date('d.m.Y', $timestamp);
+
+        if (date('d.n.Y') == $send_time) {
+            $date = $this->language->get('text_today');
+        } elseif (date('d.n.Y', strtotime('-1 day')) == $send_time) {
+            $date = $this->language->get('text_yesterday');
+        } elseif (date('Y') == date('Y', $timestamp)) {
+            $date = date('j', $timestamp) . ' ' . $this->getMonth(date('n', $timestamp));
+        } else {
+            $date = date('j', $timestamp) . ' ' . $this->getMonth(date('n', $timestamp)) . ' ' . date('Y', $timestamp);
+        }
+
+        if ($time) {
+            $date .= ', ' . date('H:i', $timestamp);
+        }
+
+        if ($correct && date('Z', $timestamp)) {
+            $date .= ' <strong>UTC' . date('P', $timestamp) . '</strong>';
+        }
+
+        return $date;
+    }
+
+    public function getMonth($number)
+    {
+
+        $month = '';
+
+        switch ($number) {
+            case 1:
+                $month = 'января';
+                break;
+            case 2:
+                $month = 'февраля';
+                break;
+            case 3:
+                $month = 'марта';
+                break;
+            case 4:
+                $month = 'апреля';
+                break;
+            case 5:
+                $month = 'мая';
+                break;
+            case 6:
+                $month = 'июня';
+                break;
+            case 7:
+                $month = 'июля';
+                break;
+            case 8:
+                $month = 'августа';
+                break;
+            case 9:
+                $month = 'сентября';
+                break;
+            case 10:
+                $month = 'октября';
+                break;
+            case 11:
+                $month = 'ноября';
+                break;
+            case 12:
+                $month = 'декабря';
+                break;
+        }
+
+        return $month;
+    }
+
+
+    public function order()
+    {
+
+        $this->document->setTitle($this->language->get('heading_title_order'));
+
+        $this->load->model('extension/module/cdek_integrator');
+
+        $this->orderList();
+    }
+
+    private function orderList()
+    {
+
+        if ($this->new_application) {
+            $this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+        }
+
+        if (isset($this->request->get['filter_order_id'])) {
+            $filter_order_id = $this->request->get['filter_order_id'];
+        } else {
+            $filter_order_id = null;
+        }
+
+        if (isset($this->request->get['filter_customer'])) {
+            $filter_customer = $this->request->get['filter_customer'];
+        } else {
+            $filter_customer = null;
+        }
+
+        if (isset($this->request->get['filter_order_status_id'])) {
+            $filter_order_status_id = $this->request->get['filter_order_status_id'];
+        } else {
+            $filter_order_status_id = null;
+        }
+
+        if (!empty($this->setting['new_order_status_id']) && (!$filter_order_status_id || !in_array($filter_order_status_id, $this->setting['new_order_status_id']))) {
+            $filter_order_status_id = $this->setting['new_order_status_id'];
+        }
+
+        if (isset($this->request->get['filter_total'])) {
+            $filter_total = $this->request->get['filter_total'];
+        } else {
+            $filter_total = null;
+        }
+
+        if (isset($this->request->get['filter_date_added'])) {
+            $filter_date_added = $this->request->get['filter_date_added'];
+        } else {
+            $filter_date_added = null;
+        }
+
+        if (isset($this->request->get['sort'])) {
+            $sort = $this->request->get['sort'];
+        } else {
+            $sort = 'o.order_id';
+        }
+
+        if (isset($this->request->get['order'])) {
+            $order = $this->request->get['order'];
+        } else {
+            $order = 'DESC';
+        }
+
+        if (isset($this->request->get['page'])) {
+            $page = $this->request->get['page'];
+        } else {
+            $page = 1;
+        }
+
+        if (isset($this->request->get['limit']) && in_array($this->request->get['limit'], $this->limits)) {
+            $limit = $this->request->get['limit'];
+        } else {
+            $limit = reset($this->limits);
+        }
+
+        $url = '';
+
+        if (isset($this->request->get['filter_order_id'])) {
+            $url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
+        }
+
+        if (isset($this->request->get['filter_customer'])) {
+            $url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
+        }
+
+        if (isset($this->request->get['filter_order_status_id'])) {
+            $url .= '&filter_order_status_id=' . $this->request->get['filter_order_status_id'];
+        }
+
+        if (isset($this->request->get['filter_total'])) {
+            $url .= '&filter_total=' . $this->request->get['filter_total'];
+        }
+
+        if (isset($this->request->get['filter_date_added'])) {
+            $url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
+        }
+
+        if (isset($this->request->get['filter_date_modified'])) {
+            $url .= '&filter_date_modified=' . $this->request->get['filter_date_modified'];
+        }
+
+        if (isset($this->request->get['sort'])) {
+            $url .= '&sort=' . $this->request->get['sort'];
+        }
+
+        if (isset($this->request->get['order'])) {
+            $url .= '&order=' . $this->request->get['order'];
+        }
+
+        if (isset($this->request->get['page'])) {
+            $url .= '&page=' . $this->request->get['page'];
+        }
+
+        if (isset($this->request->get['limit'])) {
+            $url .= '&limit=' . $this->request->get['limit'];
+        }
+
+        $rdata['breadcrumbs'] = array();
+
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('text_home'),
+            'href'      => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], 'SSL'),
+        );
+
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('text_extension'),
+            'href'      => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
+        );
+
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('heading_title_bk_main'),
+            'href'      => $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'),
+        );
+
+        $rdata['create'] = html_entity_decode($this->url->link('extension/module/cdek_integrator/createOrder', 'user_token=' . $this->session->data['user_token'], 'SSL'), ENT_QUOTES, 'UTF-8');
+        $rdata['cancel'] = $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL');
+
+        $rdata['orders'] = array();
+
+        $exdata = array(
+            'filter_order_id'            => $filter_order_id,
+            'filter_customer'            => $filter_customer,
+            'filter_order_status_id'    => $filter_order_status_id,
+            'filter_total'                => $filter_total,
+            'filter_date_added'            => $filter_date_added,
+            'filter_new_order'            => $this->setting['new_order'],
+            'filter_dispatch'            => TRUE,
+            'sort'                        => $sort,
+            'order'                        => $order,
+            'start'                        => ($page - 1) * $limit,
+            'limit'                        => $limit
+        );
+
+        if (!empty($this->setting['shipping_method'])) {
+            $exdata['filter_shipping'] = $this->setting['shipping_method'];
+        }
+
+        if (!empty($this->setting['payment_method'])) {
+            $exdata['filter_payment'] = $this->setting['payment_method'];
+        }
+
+        $results = $this->model_extension_module_cdek_integrator->getOrders($exdata);
+
+        $order_total = $this->model_extension_module_cdek_integrator->getTotalOrders($exdata);
+
+        /*if (!$order_total) {
 			$this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
 		}*/
 
-		foreach ($results as $result) {
-			$action = array();
-
-			$action[] = array(
-				'text' => $this->language->get('button_create'),
-				'icon' => '<i class="fa fa-truck"></i>',
-				'href' => $this->url->link('extension/module/cdek_integrator/createOrder', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $result['order_id'] . $url, 'SSL')
-			);
-
-			$action[] = array(
-				'text' => $this->language->get('text_view'),
-				'icon' => '<i class="fa fa-info"></i>',
-				'href' => $this->url->link('sale/order/info', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $result['order_id'] . $url, 'SSL')
-			);
-
-			$rdata['orders'][] = array(
-				'order_id'      => $result['order_id'],
-				'customer'      => $result['customer'],
-				'status'        => $result['status'],
-				'total'         => $this->currency->format($result['total'], $result['currency_code'], $result['currency_value']),
-				'date_added'    => date($this->language->get('date_format_short'), strtotime($result['date_added'])),
-				'selected'      => isset($this->request->post['selected']) && in_array($result['order_id'], $this->request->post['selected']),
-				'action'        => $action
-			);
-		}
-
-		$rdata['heading_title'] = $this->language->get('heading_title_order');
-
-		$rdata['text_no_results'] = $this->language->get('text_no_results');
-		$rdata['text_missing'] = $this->language->get('text_missing');
-
-		$rdata['column_order_id'] = $this->language->get('column_order_id');
-		$rdata['column_customer'] = $this->language->get('column_customer');
-		$rdata['column_status'] = $this->language->get('column_status');
-		$rdata['column_total'] = $this->language->get('column_total');
-		$rdata['column_date_added'] = $this->language->get('column_date_added');
-		$rdata['column_action'] = $this->language->get('column_action');
-
-		$rdata['button_create'] = $this->language->get('button_create');
-		$rdata['button_cancel'] = $this->language->get('button_cancel');
-		$rdata['button_filter'] = $this->language->get('button_filter');
-
-		$rdata['token'] = $this->session->data['user_token'];
-
-		if (isset($this->error['warning'])) {
-			$rdata['error_warning'] = $this->error['warning'];
-		} else {
-			$rdata['error_warning'] = '';
-		}
-
-		if (isset($this->session->data['success'])) {
-			$rdata['success'] = $this->session->data['success'];
-
-			unset($this->session->data['success']);
-		} else {
-			$rdata['success'] = '';
-		}
-
-		$url = '';
-
-		if (isset($this->request->get['filter_order_id'])) {
-			$url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
-		}
-
-		if (isset($this->request->get['filter_customer'])) {
-			$url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
-		}
-
-		if (isset($this->request->get['filter_order_status_id'])) {
-			$url .= '&filter_order_status_id=' . $this->request->get['filter_order_status_id'];
-		}
-
-		if (isset($this->request->get['filter_total'])) {
-			$url .= '&filter_total=' . $this->request->get['filter_total'];
-		}
-
-		if (isset($this->request->get['filter_date_added'])) {
-			$url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
-		}
-
-		if ($order == 'ASC') {
-			$url .= '&order=DESC';
-		} else {
-			$url .= '&order=ASC';
-		}
-
-		if (isset($this->request->get['page'])) {
-			$url .= '&page=' . $this->request->get['page'];
-		}
-
-		if (isset($this->request->get['limit'])) {
-			$url .= '&limit=' . $this->request->get['limit'];
-		}
-
-		$rdata['sort_order'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . '&sort=o.order_id' . $url, 'SSL');
-		$rdata['sort_customer'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . '&sort=customer' . $url, 'SSL');
-		$rdata['sort_status'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . '&sort=status' . $url, 'SSL');
-		$rdata['sort_total'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . '&sort=o.total' . $url, 'SSL');
-		$rdata['sort_date_added'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . '&sort=o.date_added' . $url, 'SSL');
-
-		$url = '';
+        foreach ($results as $result) {
+            $action = array();
+
+            $action[] = array(
+                'text' => $this->language->get('button_create'),
+                'icon' => '<i class="fa fa-truck"></i>',
+                'href' => $this->url->link('extension/module/cdek_integrator/createOrder', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $result['order_id'] . $url, 'SSL')
+            );
+
+            $action[] = array(
+                'text' => $this->language->get('text_view'),
+                'icon' => '<i class="fa fa-info"></i>',
+                'href' => $this->url->link('sale/order/info', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $result['order_id'] . $url, 'SSL')
+            );
+
+            $rdata['orders'][] = array(
+                'order_id'      => $result['order_id'],
+                'customer'      => $result['customer'],
+                'status'        => $result['status'],
+                'total'         => $this->currency->format($result['total'], $result['currency_code'], $result['currency_value']),
+                'date_added'    => date($this->language->get('date_format_short'), strtotime($result['date_added'])),
+                'selected'      => isset($this->request->post['selected']) && in_array($result['order_id'], $this->request->post['selected']),
+                'action'        => $action
+            );
+        }
+
+        $rdata['heading_title'] = $this->language->get('heading_title_order');
+
+        $rdata['text_no_results'] = $this->language->get('text_no_results');
+        $rdata['text_missing'] = $this->language->get('text_missing');
+
+        $rdata['column_order_id'] = $this->language->get('column_order_id');
+        $rdata['column_customer'] = $this->language->get('column_customer');
+        $rdata['column_status'] = $this->language->get('column_status');
+        $rdata['column_total'] = $this->language->get('column_total');
+        $rdata['column_date_added'] = $this->language->get('column_date_added');
+        $rdata['column_action'] = $this->language->get('column_action');
+
+        $rdata['button_create'] = $this->language->get('button_create');
+        $rdata['button_cancel'] = $this->language->get('button_cancel');
+        $rdata['button_filter'] = $this->language->get('button_filter');
+
+        $rdata['token'] = $this->session->data['user_token'];
+
+        if (isset($this->error['warning'])) {
+            $rdata['error_warning'] = $this->error['warning'];
+        } else {
+            $rdata['error_warning'] = '';
+        }
+
+        if (isset($this->session->data['success'])) {
+            $rdata['success'] = $this->session->data['success'];
+
+            unset($this->session->data['success']);
+        } else {
+            $rdata['success'] = '';
+        }
+
+        $url = '';
+
+        if (isset($this->request->get['filter_order_id'])) {
+            $url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
+        }
+
+        if (isset($this->request->get['filter_customer'])) {
+            $url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
+        }
+
+        if (isset($this->request->get['filter_order_status_id'])) {
+            $url .= '&filter_order_status_id=' . $this->request->get['filter_order_status_id'];
+        }
+
+        if (isset($this->request->get['filter_total'])) {
+            $url .= '&filter_total=' . $this->request->get['filter_total'];
+        }
+
+        if (isset($this->request->get['filter_date_added'])) {
+            $url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
+        }
+
+        if ($order == 'ASC') {
+            $url .= '&order=DESC';
+        } else {
+            $url .= '&order=ASC';
+        }
+
+        if (isset($this->request->get['page'])) {
+            $url .= '&page=' . $this->request->get['page'];
+        }
+
+        if (isset($this->request->get['limit'])) {
+            $url .= '&limit=' . $this->request->get['limit'];
+        }
+
+        $rdata['sort_order'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . '&sort=o.order_id' . $url, 'SSL');
+        $rdata['sort_customer'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . '&sort=customer' . $url, 'SSL');
+        $rdata['sort_status'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . '&sort=status' . $url, 'SSL');
+        $rdata['sort_total'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . '&sort=o.total' . $url, 'SSL');
+        $rdata['sort_date_added'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . '&sort=o.date_added' . $url, 'SSL');
+
+        $url = '';
 
-		if (isset($this->request->get['filter_order_id'])) {
-			$url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
-		}
+        if (isset($this->request->get['filter_order_id'])) {
+            $url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
+        }
 
-		if (isset($this->request->get['filter_customer'])) {
-			$url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
-		}
+        if (isset($this->request->get['filter_customer'])) {
+            $url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
+        }
 
-		if (isset($this->request->get['filter_order_status_id'])) {
-			$url .= '&filter_order_status_id=' . $this->request->get['filter_order_status_id'];
-		}
+        if (isset($this->request->get['filter_order_status_id'])) {
+            $url .= '&filter_order_status_id=' . $this->request->get['filter_order_status_id'];
+        }
 
-		if (isset($this->request->get['filter_total'])) {
-			$url .= '&filter_total=' . $this->request->get['filter_total'];
-		}
+        if (isset($this->request->get['filter_total'])) {
+            $url .= '&filter_total=' . $this->request->get['filter_total'];
+        }
 
-		if (isset($this->request->get['filter_date_added'])) {
-			$url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
-		}
+        if (isset($this->request->get['filter_date_added'])) {
+            $url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
+        }
 
-		if (isset($this->request->get['sort'])) {
-			$url .= '&sort=' . $this->request->get['sort'];
-		}
+        if (isset($this->request->get['sort'])) {
+            $url .= '&sort=' . $this->request->get['sort'];
+        }
 
-		if (isset($this->request->get['order'])) {
-			$url .= '&order=' . $this->request->get['order'];
-		}
+        if (isset($this->request->get['order'])) {
+            $url .= '&order=' . $this->request->get['order'];
+        }
 
-		$rdata['limits'] = array();
+        $rdata['limits'] = array();
 
-		foreach ($this->limits as $item) {
-			$rdata['limits'][$item] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . '&limit=' . $item . $url, 'SSL');
-		}
+        foreach ($this->limits as $item) {
+            $rdata['limits'][$item] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . '&limit=' . $item . $url, 'SSL');
+        }
 
-		$url = '';
+        $url = '';
 
-		if (isset($this->request->get['filter_order_id'])) {
-			$url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
-		}
+        if (isset($this->request->get['filter_order_id'])) {
+            $url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
+        }
 
-		if (isset($this->request->get['filter_customer'])) {
-			$url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
-		}
+        if (isset($this->request->get['filter_customer'])) {
+            $url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
+        }
 
-		if (isset($this->request->get['filter_order_status_id'])) {
-			$url .= '&filter_order_status_id=' . $this->request->get['filter_order_status_id'];
-		}
+        if (isset($this->request->get['filter_order_status_id'])) {
+            $url .= '&filter_order_status_id=' . $this->request->get['filter_order_status_id'];
+        }
 
-		if (isset($this->request->get['filter_total'])) {
-			$url .= '&filter_total=' . $this->request->get['filter_total'];
-		}
+        if (isset($this->request->get['filter_total'])) {
+            $url .= '&filter_total=' . $this->request->get['filter_total'];
+        }
 
-		if (isset($this->request->get['filter_date_added'])) {
-			$url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
-		}
+        if (isset($this->request->get['filter_date_added'])) {
+            $url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
+        }
 
-		if (isset($this->request->get['sort'])) {
-			$url .= '&sort=' . $this->request->get['sort'];
-		}
+        if (isset($this->request->get['sort'])) {
+            $url .= '&sort=' . $this->request->get['sort'];
+        }
 
-		if (isset($this->request->get['order'])) {
-			$url .= '&order=' . $this->request->get['order'];
-		}
+        if (isset($this->request->get['order'])) {
+            $url .= '&order=' . $this->request->get['order'];
+        }
 
-		$pagination = new Pagination();
-		$pagination->total = $order_total;
-		$pagination->page = $page;
-		$pagination->limit = $limit;
-		$pagination->text = $this->language->get('text_pagination');
-		$pagination->url = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . $url . '&page={page}', 'SSL');
+        $pagination = new Pagination();
+        $pagination->total = $order_total;
+        $pagination->page = $page;
+        $pagination->limit = $limit;
+        $pagination->text = $this->language->get('text_pagination');
+        $pagination->url = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . $url . '&page={page}', 'SSL');
 
-		$rdata['pagination'] = $pagination->render();
+        $rdata['pagination'] = $pagination->render();
 
-		$rdata['filter_order_id'] = $filter_order_id;
-		$rdata['filter_customer'] = $filter_customer;
-		$rdata['filter_order_status_id'] = $filter_order_status_id;
-		$rdata['filter_total'] = $filter_total;
-		$rdata['filter_date_added'] = $filter_date_added;
+        $rdata['filter_order_id'] = $filter_order_id;
+        $rdata['filter_customer'] = $filter_customer;
+        $rdata['filter_order_status_id'] = $filter_order_status_id;
+        $rdata['filter_total'] = $filter_total;
+        $rdata['filter_date_added'] = $filter_date_added;
 
-		$this->load->model('localisation/order_status');
+        $this->load->model('localisation/order_status');
 
-		$rdata['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
+        $rdata['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
 
-		if (!empty($this->setting['new_order_status_id'])) {
+        if (!empty($this->setting['new_order_status_id'])) {
 
-			foreach ($rdata['order_statuses'] as $key => $order_status) {
-				if (!in_array($order_status['order_status_id'], $this->setting['new_order_status_id'])) {
-					unset($rdata['order_statuses'][$key]);
-				}
-			}
+            foreach ($rdata['order_statuses'] as $key => $order_status) {
+                if (!in_array($order_status['order_status_id'], $this->setting['new_order_status_id'])) {
+                    unset($rdata['order_statuses'][$key]);
+                }
+            }
+        }
 
-		}
+        $rdata['sort'] = $sort;
+        $rdata['order'] = strtolower($order);
+        $rdata['limit'] = $limit;
 
-		$rdata['sort'] = $sort;
-		$rdata['order'] = strtolower($order);
-		$rdata['limit'] = $limit;
+        $rdata['header'] = $this->load->controller('common/header');
+        $rdata['column_left'] = $this->load->controller('common/column_left');
+        $rdata['footer'] = $this->load->controller('common/footer');
 
-		$rdata['header'] = $this->load->controller('common/header');
-		$rdata['column_left'] = $this->load->controller('common/column_left');
-		$rdata['footer'] = $this->load->controller('common/footer');
+        $this->response->setOutput($this->templateOutput('order_list', $rdata));
+    }
 
-		$this->response->setOutput($this->templateOutput('order_list', $rdata));
-	}
+    public function createOrder()
+    {
 
-	public function createOrder() {
+        if (empty($this->request->get['order_id'])) {
+            $this->response->redirect($this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+        } else {
+            $order_id = $this->request->get['order_id'];
+        }
 
-		if (empty($this->request->get['order_id'])) {
-			$this->response->redirect($this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-		} else {
-			$order_id = $this->request->get['order_id'];
-		}
+        $this->load->model('extension/module/cdek_integrator');
+        $this->load->model('sale/order');
 
-		$this->load->model('extension/module/cdek_integrator');
-		$this->load->model('sale/order');
+        if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validateOrderFrom()) {
 
-		if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validateOrderFrom()) {
+            $component = $this->api->loadComponent('orders');
 
-			$component = $this->api->loadComponent('orders');
+            $component->setNumber($this->request->post['number']);
 
-			$component->setNumber($this->request->post['number']);
+            $cdek_orders_post = $this->request->post['cdek_orders'];
 
-			$cdek_orders_post = $this->request->post['cdek_orders'];			
+            $telephone = $cdek_orders_post['recipient_telephone'];
+            $telephone = trim($telephone);
+            $telephone = preg_replace('/[^0-9+]/isu', '', $telephone);
 
-			$telephone = $cdek_orders_post['recipient_telephone'];
-			$telephone = trim($telephone);
-			$telephone = preg_replace('/[^0-9+]/isu', '', $telephone);
+            $cdek_orders_post['recipient_telephone'] = $telephone;
 
-			$cdek_orders_post['recipient_telephone'] = $telephone;
+            $this->request->post['cdek_orders']['currency'] = $this->setting['currency'];
 
-			$this->request->post['cdek_orders']['currency'] = $this->setting['currency'];
+            foreach ($cdek_orders_post['package'] as $package_id => $package) {
 
-			foreach ($cdek_orders_post['package'] as $package_id => $package) {
+                $additional_weight = $this->getPackingWeight($package['weight']);
 
-				$additional_weight = $this->getPackingWeight($package['weight']);
+                if ((float)$additional_weight['weight']) {
 
-				if ((float)$additional_weight['weight']) {
+                    if ($this->setting['packing_prefix'] == '+') {
+                        $cdek_orders_post['package'][$package_id]['weight'] += $additional_weight['weight'];
+                    } else {
+                        $cdek_orders_post['package'][$package_id]['weight'] -= (float)min($additional_weight['weight'], $package['weight']);
+                    }
+                }
+            }
 
-					if ($this->setting['packing_prefix'] == '+') {
-						$cdek_orders_post['package'][$package_id]['weight'] += $additional_weight['weight'];
-					} else {
-						$cdek_orders_post['package'][$package_id]['weight'] -= (float)min($additional_weight['weight'], $package['weight']);
-					}
-				}
-			}
+            $component->setOrders($cdek_orders_post);
 
-			$component->setOrders($cdek_orders_post);
+            $response = $this->api->sendData($component);
 
-			$response = $this->api->sendData($component);
+            $this->logWrite();
 
-			$this->logWrite();
+            if (!empty($response['requests']['errors'])) {
 
-			if (!empty($response['requests']['errors'])) {
+                foreach ($response['requests']['errors'] as $error) {
 
-				foreach ($response['requests']['errors'] as $error) {
+                    $this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
+                }
+            }
 
-					$this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
+            $date = '';
+            $cdek_orders = array();
 
-				}
-			}
+            if (isset($response) && empty($response['requests']['errors'])) {
 
-			$date = '';
-			$cdek_orders = array();
+                if (isset($response['entity']['uuid'])) {
 
-			if (isset($response) && empty($response['requests']['errors'])) {	
+                    if (!empty($cdek_orders_post['courier']['call']) && $cdek_orders_post['courier']['call'] == 1) {
+                        $courier = $this->api->loadComponent('order_courier');
+                        $courier->setNumber($response['entity']['uuid']);
+                        $courier->setData($cdek_orders_post['courier']);
+                        $response_courier = $this->api->sendData($courier);
+                    }
 
-				if (isset($response['entity']['uuid'])) {
+                    $order_info = $this->request->post['cdek_orders'];
 
-					if (!empty($cdek_orders_post['courier']['call']) && $cdek_orders_post['courier']['call'] == 1) {
-						$courier = $this->api->loadComponent('order_courier');
-						$courier->setNumber($response['entity']['uuid']);
-						$courier->setData($cdek_orders_post['courier']);
-						$response_courier = $this->api->sendData($courier);
-					}
+                    $order_info += array(
+                        'dispatch_number'    => (string)$response['entity']['uuid'],
+                    );
 
-					$order_info = $this->request->post['cdek_orders'];
+                    $cdek_orders = $order_info;
+                }
+            } elseif (!$this->api->error) {
+                $this->error['warning'][] = 'Не удалось получить ответ от сервера СДЭК.';
+            }
 
-					$order_info += array(
-						'dispatch_number'	=> (string)$response['entity']['uuid'],
-					);
+            if (!empty($cdek_orders)) {
 
-					$cdek_orders = $order_info;
-				}
+                if (!$date) $date = time();
 
-			} elseif(!$this->api->error) {
-				$this->error['warning'][] = 'Не удалось получить ответ от сервера СДЭК.';
-			}
+                $default_timezone = date_default_timezone_get();
+                date_default_timezone_set('UTC');
 
-			if (!empty($cdek_orders)) {
+                $defoult_time = time();
 
-				if (!$date) $date = time();
+                date_default_timezone_set($default_timezone);
 
-				$default_timezone = date_default_timezone_get();
-				date_default_timezone_set('UTC');
+                if (!isset($cdek_orders_post['status_id'])) {
 
-				$defoult_time = time();
+                    $cdek_orders['status_id'] = "ACCEPTED";
 
-				date_default_timezone_set($default_timezone);
+                    $status_history = array();
+                    $status_history[] = array(
+                        'date'            => $defoult_time,
+                        'status_id'        => $cdek_orders['status_id'],
+                        'description'    => 'Принят',
+                        'city_code'        => $this->setting['city_id'],
+                        'city_name'        => $this->setting['city_name']
+                    );
 
-				if (!isset($cdek_orders_post['status_id'])) {
+                    $cdek_orders['status_history'] = $status_history;
+                }
 
-					$cdek_orders['status_id'] = "ACCEPTED";
+                $exdata = array(
+                    'number'    => $this->request->post['number'],
+                    'date'        => $date,
+                    'orders'    => $cdek_orders
+                );
 
-					$status_history = array();
-					$status_history[] = array(
-						'date'			=> $defoult_time,
-						'status_id'		=> $cdek_orders['status_id'],
-						'description'	=> 'Принят',
-						'city_code'		=> $this->setting['city_id'],
-						'city_name'		=> $this->setting['city_name']
-					);
+                $this->model_extension_module_cdek_integrator->addDispatch($exdata);
 
-					$cdek_orders['status_history'] = $status_history;
-				}
+                $this->session->data['success'] = 'Отгружен заказ!';
 
-				$exdata = array(
-					'number'	=> $this->request->post['number'],
-					'date'		=> $date,
-					'orders'	=> $cdek_orders
-				);
+                $url = '';
 
-				$this->model_extension_module_cdek_integrator->addDispatch($exdata);
+                if (isset($this->request->get['filter_order_id'])) {
+                    $url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
+                }
+
+                if (isset($this->request->get['filter_customer'])) {
+                    $url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
+                }
+
+                if (isset($this->request->get['filter_order_status_id'])) {
+                    $url .= '&filter_order_status_id=' . $this->request->get['filter_order_status_id'];
+                }
+
+                if (isset($this->request->get['filter_total'])) {
+                    $url .= '&filter_total=' . $this->request->get['filter_total'];
+                }
+
+                if (isset($this->request->get['filter_date_added'])) {
+                    $url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
+                }
+
+                if (isset($this->request->get['filter_date_modified'])) {
+                    $url .= '&filter_date_modified=' . $this->request->get['filter_date_modified'];
+                }
+
+                if (isset($this->request->get['sort'])) {
+                    $url .= '&sort=' . $this->request->get['sort'];
+                }
+
+                if (isset($this->request->get['order'])) {
+                    $url .= '&order=' . $this->request->get['order'];
+                }
+
+                if (isset($this->request->get['page'])) {
+                    $url .= '&page=' . $this->request->get['page'];
+                }
+
+                if (isset($this->request->get['limit'])) {
+                    $url .= '&limit=' . $this->request->get['limit'];
+                }
+
+                $this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'));
+            }
+        }
+
+        $this->document->setTitle($this->language->get('heading_title_new_order'));
+
+        $rdata['heading_title'] = $this->language->get('heading_title_new_order');
+
+        $rdata['text_order_n'] = $this->language->get('text_order_n');
+        $rdata['text_city'] = $this->language->get('text_city');
+        $rdata['text_order_date'] = $this->language->get('text_order_date');
+        $rdata['api_ajax_url'] = $this->getInfo()->getAjaxUrl();
+        $rdata['text_order_count_items'] = $this->language->get('text_order_count_items');
+        $rdata['text_select'] = $this->language->get('text_select');
+        $rdata['text_order_id'] = $this->language->get('text_order_id');
+        $rdata['text_order_total'] = $this->language->get('text_order_total');
+        $rdata['text_city'] = $this->language->get('text_city');
+        $rdata['text_customer_shipping_method'] = $this->language->get('text_customer_shipping_method');
+        $rdata['text_shipping_address'] = $this->language->get('text_shipping_address');
+        $rdata['text_customer_shipping_address'] = $this->language->get('text_customer_shipping_address');
+        $rdata['text_courier_address'] = $this->language->get('text_courier_address');
+        $rdata['text_courier'] = $this->language->get('text_courier');
+        $rdata['text_from'] = $this->language->get('text_from');
+        $rdata['text_to'] = $this->language->get('text_to');
+        $rdata['text_short_length'] = $this->language->get('text_short_length');
+        $rdata['text_short_width'] = $this->language->get('text_short_width');
+        $rdata['text_short_height'] = $this->language->get('text_short_height');
+        $rdata['text_attention'] = $this->language->get('text_attention');
+        $rdata['text_courier_day'] = $this->language->get('text_courier_day');
+        $rdata['text_courier_hour_range'] = $this->language->get('text_courier_hour_range');
+        $rdata['text_title_schedule'] = $this->language->get('text_title_schedule');
+        $rdata['text_title_orders'] = $this->language->get('text_title_orders');
+        $rdata['text_help_shedule'] = $this->language->get('text_help_shedule');
+        $rdata['text_help_shedule_detail'] = $this->language->get('text_help_shedule_detail');
+        $rdata['text_package_n'] = $this->language->get('text_package_n');
+        $rdata['text_user_comment'] = $this->language->get('text_user_comment');
+        $rdata['text_none'] = $this->language->get('text_none');
+
+        $rdata['entry_tariff'] = $this->language->get('entry_tariff');
+        $rdata['entry_delivery_recipient_cost'] = $this->language->get('entry_delivery_recipient_cost');
+        $rdata['entry_delivery_recipient_vat_rate'] = $this->language->get('entry_delivery_recipient_vat_rate');
+        $rdata['entry_delivery_recipient_vat_sum'] = $this->language->get('entry_delivery_recipient_vat_sum');
+        $rdata['entry_seller_name'] = $this->language->get('entry_seller_name');
+        $rdata['entry_comment'] = $this->language->get('entry_comment');
+        $rdata['entry_recipient_name'] = $this->language->get('entry_recipient_name');
+        $rdata['entry_recipient_telephone'] = $this->language->get('entry_recipient_telephone');
+        $rdata['entry_recipient_email'] = $this->language->get('entry_recipient_email');
+        $rdata['entry_recipient_city'] = $this->language->get('entry_recipient_city');
+        $rdata['entry_street'] = $this->language->get('entry_street');
+        $rdata['entry_house'] = $this->language->get('entry_house');
+        $rdata['entry_flat'] = $this->language->get('entry_flat');
+        $rdata['entry_pvz'] = $this->language->get('entry_pvz');
+        $rdata['entry_brcode'] = $this->language->get('entry_brcode');
+        $rdata['entry_pack'] = $this->language->get('entry_pack');
+        $rdata['entry_package'] = $this->language->get('entry_package');
+        $rdata['entry_order_weight'] = $this->language->get('entry_order_weight');
+        $rdata['entry_courier_call'] = $this->language->get('entry_courier_call');
+        $rdata['entry_courier_date'] = $this->language->get('entry_courier_date');
+        $rdata['entry_courier_time'] = $this->language->get('entry_courier_time');
+        $rdata['entry_courier_lunch'] = $this->language->get('entry_courier_lunch');
+        $rdata['entry_courier_send_phone'] = $this->language->get('entry_courier_send_phone');
+        $rdata['entry_courier_sender_name'] = $this->language->get('entry_courier_sender_name');
+        $rdata['entry_add_service'] = $this->language->get('entry_add_service');
+        $rdata['entry_attempt_new_address'] = $this->language->get('entry_attempt_new_address');
+        $rdata['entry_attempt_recipient_name'] = $this->language->get('entry_attempt_recipient_name');
+        $rdata['entry_attempt_phone'] = $this->language->get('entry_attempt_phone');
+        $rdata['entry_cod'] = $this->language->get('entry_cod');
+        $rdata['entry_currency'] = $this->language->get('entry_currency');
+        $rdata['entry_currency_cod'] = $this->language->get('entry_currency_cod');
+
+        $rdata['column_title'] = $this->language->get('column_title');
+        $rdata['column_weight'] = $this->language->get('column_weight');
+        $rdata['column_price'] = $this->language->get('column_price');
+        $rdata['column_payment'] = $this->language->get('column_payment');
+        $rdata['column_amount'] = $this->language->get('column_amount');
+        $rdata['column_cost'] = $this->language->get('column_cost');
+        $rdata['column_date'] = $this->language->get('column_date');
+        $rdata['column_time'] = $this->language->get('column_time');
+        $rdata['column_additional'] = $this->language->get('column_additional');
+
+        $rdata['tab_data'] = $this->language->get('tab_data');
+        $rdata['tab_recipient'] = $this->language->get('tab_recipient');
+        $rdata['tab_package'] = $this->language->get('tab_package');
+        $rdata['tab_schedule'] = $this->language->get('tab_schedule');
+        $rdata['tab_courier'] = $this->language->get('tab_courier');
+        $rdata['tab_additional'] = $this->language->get('tab_additional');
 
-				$this->session->data['success'] = 'Отгружен заказ!';
+        $rdata['button_send'] = $this->language->get('button_send');
+        $rdata['button_cancel'] = $this->language->get('button_cancel');
+        $rdata['button_delete'] = $this->language->get('button_delete');
+        $rdata['button_add_attempt'] = $this->language->get('button_add_attempt');
 
-				$url = '';
+        $rdata['boolean_variables'] = array($this->language->get('text_no'), $this->language->get('text_yes'));
 
-				if (isset($this->request->get['filter_order_id'])) {
-					$url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
-				}
+        if (isset($this->session->data['success'])) {
+            $rdata['success'] = $this->session->data['success'];
 
-				if (isset($this->request->get['filter_customer'])) {
-					$url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
-				}
+            unset($this->session->data['success']);
+        } else {
+            $rdata['success'] = '';
+        }
 
-				if (isset($this->request->get['filter_order_status_id'])) {
-					$url .= '&filter_order_status_id=' . $this->request->get['filter_order_status_id'];
-				}
+        if (isset($this->error['warning'])) {
+            $rdata['error_warning'] = $this->error['warning'];
+        } else {
+            $rdata['error_warning'] = array();
+        }
 
-				if (isset($this->request->get['filter_total'])) {
-					$url .= '&filter_total=' . $this->request->get['filter_total'];
-				}
+        $rdata['error'] = $this->error;
 
-				if (isset($this->request->get['filter_date_added'])) {
-					$url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
-				}
+        $url = '';
 
-				if (isset($this->request->get['filter_date_modified'])) {
-					$url .= '&filter_date_modified=' . $this->request->get['filter_date_modified'];
-				}
+        if (isset($this->request->get['filter_order_id'])) {
+            $url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
+        }
 
-				if (isset($this->request->get['sort'])) {
-					$url .= '&sort=' . $this->request->get['sort'];
-				}
+        if (isset($this->request->get['filter_customer'])) {
+            $url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
+        }
 
-				if (isset($this->request->get['order'])) {
-					$url .= '&order=' . $this->request->get['order'];
-				}
+        if (isset($this->request->get['filter_order_status_id'])) {
+            $url .= '&filter_order_status_id=' . $this->request->get['filter_order_status_id'];
+        }
 
-				if (isset($this->request->get['page'])) {
-					$url .= '&page=' . $this->request->get['page'];
-				}
+        if (isset($this->request->get['filter_total'])) {
+            $url .= '&filter_total=' . $this->request->get['filter_total'];
+        }
 
-				if (isset($this->request->get['limit'])) {
-					$url .= '&limit=' . $this->request->get['limit'];
-				}
+        if (isset($this->request->get['filter_date_added'])) {
+            $url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
+        }
 
-				$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'));
+        if (isset($this->request->get['filter_date_modified'])) {
+            $url .= '&filter_date_modified=' . $this->request->get['filter_date_modified'];
+        }
 
-			}
+        if (isset($this->request->get['sort'])) {
+            $url .= '&sort=' . $this->request->get['sort'];
+        }
 
-		}
+        if (isset($this->request->get['order'])) {
+            $url .= '&order=' . $this->request->get['order'];
+        }
 
-		$this->document->setTitle($this->language->get('heading_title_new_order'));
+        if (isset($this->request->get['page'])) {
+            $url .= '&page=' . $this->request->get['page'];
+        }
+
+        if (isset($this->request->get['limit'])) {
+            $url .= '&limit=' . $this->request->get['limit'];
+        }
+
+        $rdata['breadcrumbs'] = array();
+
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('text_home'),
+            'href'      => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], 'SSL'),
+        );
 
-		$rdata['heading_title'] = $this->language->get('heading_title_new_order');
-
-		$rdata['text_order_n'] = $this->language->get('text_order_n');
-		$rdata['text_city'] = $this->language->get('text_city');
-		$rdata['text_order_date'] = $this->language->get('text_order_date');
-		$rdata['api_ajax_url'] = $this->getInfo()->getAjaxUrl();
-		$rdata['text_order_count_items'] = $this->language->get('text_order_count_items');
-		$rdata['text_select'] = $this->language->get('text_select');
-		$rdata['text_order_id'] = $this->language->get('text_order_id');
-		$rdata['text_order_total'] = $this->language->get('text_order_total');
-		$rdata['text_city'] = $this->language->get('text_city');
-		$rdata['text_customer_shipping_method'] = $this->language->get('text_customer_shipping_method');
-		$rdata['text_shipping_address'] = $this->language->get('text_shipping_address');
-		$rdata['text_customer_shipping_address'] = $this->language->get('text_customer_shipping_address');
-		$rdata['text_courier_address'] = $this->language->get('text_courier_address');
-		$rdata['text_courier'] = $this->language->get('text_courier');
-		$rdata['text_from'] = $this->language->get('text_from');
-		$rdata['text_to'] = $this->language->get('text_to');
-		$rdata['text_short_length'] = $this->language->get('text_short_length');
-		$rdata['text_short_width'] = $this->language->get('text_short_width');
-		$rdata['text_short_height'] = $this->language->get('text_short_height');
-		$rdata['text_attention'] = $this->language->get('text_attention');
-		$rdata['text_courier_day'] = $this->language->get('text_courier_day');
-		$rdata['text_courier_hour_range'] = $this->language->get('text_courier_hour_range');
-		$rdata['text_title_schedule'] = $this->language->get('text_title_schedule');
-		$rdata['text_title_orders'] = $this->language->get('text_title_orders');
-		$rdata['text_help_shedule'] = $this->language->get('text_help_shedule');
-		$rdata['text_help_shedule_detail'] = $this->language->get('text_help_shedule_detail');
-		$rdata['text_package_n'] = $this->language->get('text_package_n');
-		$rdata['text_user_comment'] = $this->language->get('text_user_comment');
-		$rdata['text_none'] = $this->language->get('text_none');
-
-		$rdata['entry_tariff'] = $this->language->get('entry_tariff');
-		$rdata['entry_delivery_recipient_cost'] = $this->language->get('entry_delivery_recipient_cost');
-		$rdata['entry_delivery_recipient_vat_rate'] = $this->language->get('entry_delivery_recipient_vat_rate');
-		$rdata['entry_delivery_recipient_vat_sum'] = $this->language->get('entry_delivery_recipient_vat_sum');
-		$rdata['entry_seller_name'] = $this->language->get('entry_seller_name');
-		$rdata['entry_comment'] = $this->language->get('entry_comment');
-		$rdata['entry_recipient_name'] = $this->language->get('entry_recipient_name');
-		$rdata['entry_recipient_telephone'] = $this->language->get('entry_recipient_telephone');
-		$rdata['entry_recipient_email'] = $this->language->get('entry_recipient_email');
-		$rdata['entry_recipient_city'] = $this->language->get('entry_recipient_city');
-		$rdata['entry_street'] = $this->language->get('entry_street');
-		$rdata['entry_house'] = $this->language->get('entry_house');
-		$rdata['entry_flat'] = $this->language->get('entry_flat');
-		$rdata['entry_pvz'] = $this->language->get('entry_pvz');
-		$rdata['entry_brcode'] = $this->language->get('entry_brcode');
-		$rdata['entry_pack'] = $this->language->get('entry_pack');
-		$rdata['entry_package'] = $this->language->get('entry_package');
-		$rdata['entry_order_weight'] = $this->language->get('entry_order_weight');
-		$rdata['entry_courier_call'] = $this->language->get('entry_courier_call');
-		$rdata['entry_courier_date'] = $this->language->get('entry_courier_date');
-		$rdata['entry_courier_time'] = $this->language->get('entry_courier_time');
-		$rdata['entry_courier_lunch'] = $this->language->get('entry_courier_lunch');
-		$rdata['entry_courier_send_phone'] = $this->language->get('entry_courier_send_phone');
-		$rdata['entry_courier_sender_name'] = $this->language->get('entry_courier_sender_name');
-		$rdata['entry_add_service'] = $this->language->get('entry_add_service');
-		$rdata['entry_attempt_new_address'] = $this->language->get('entry_attempt_new_address');
-		$rdata['entry_attempt_recipient_name'] = $this->language->get('entry_attempt_recipient_name');
-		$rdata['entry_attempt_phone'] = $this->language->get('entry_attempt_phone');
-		$rdata['entry_cod'] = $this->language->get('entry_cod');
-		$rdata['entry_currency'] = $this->language->get('entry_currency');
-		$rdata['entry_currency_cod'] = $this->language->get('entry_currency_cod');
-
-		$rdata['column_title'] = $this->language->get('column_title');
-		$rdata['column_weight'] = $this->language->get('column_weight');
-		$rdata['column_price'] = $this->language->get('column_price');
-		$rdata['column_payment'] = $this->language->get('column_payment');
-		$rdata['column_amount'] = $this->language->get('column_amount');
-		$rdata['column_cost'] = $this->language->get('column_cost');
-		$rdata['column_date'] = $this->language->get('column_date');
-		$rdata['column_time'] = $this->language->get('column_time');
-		$rdata['column_additional'] = $this->language->get('column_additional');
-
-		$rdata['tab_data'] = $this->language->get('tab_data');
-		$rdata['tab_recipient'] = $this->language->get('tab_recipient');
-		$rdata['tab_package'] = $this->language->get('tab_package');
-		$rdata['tab_schedule'] = $this->language->get('tab_schedule');
-		$rdata['tab_courier'] = $this->language->get('tab_courier');
-		$rdata['tab_additional'] = $this->language->get('tab_additional');
-
-		$rdata['button_send'] = $this->language->get('button_send');
-		$rdata['button_cancel'] = $this->language->get('button_cancel');
-		$rdata['button_delete'] = $this->language->get('button_delete');
-		$rdata['button_add_attempt'] = $this->language->get('button_add_attempt');
-
-		$rdata['boolean_variables'] = array($this->language->get('text_no'), $this->language->get('text_yes'));
-
-		if (isset($this->session->data['success'])) {
-			$rdata['success'] = $this->session->data['success'];
-
-			unset($this->session->data['success']);
-		} else {
-			$rdata['success'] = '';
-		}
-
-		if (isset($this->error['warning'])) {
-			$rdata['error_warning'] = $this->error['warning'];
-		} else {
-			$rdata['error_warning'] = array();
-		}
-
-		$rdata['error'] = $this->error;
-
-		$url = '';
-
-		if (isset($this->request->get['filter_order_id'])) {
-			$url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
-		}
-
-		if (isset($this->request->get['filter_customer'])) {
-			$url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
-		}
-
-		if (isset($this->request->get['filter_order_status_id'])) {
-			$url .= '&filter_order_status_id=' . $this->request->get['filter_order_status_id'];
-		}
-
-		if (isset($this->request->get['filter_total'])) {
-			$url .= '&filter_total=' . $this->request->get['filter_total'];
-		}
-
-		if (isset($this->request->get['filter_date_added'])) {
-			$url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
-		}
-
-		if (isset($this->request->get['filter_date_modified'])) {
-			$url .= '&filter_date_modified=' . $this->request->get['filter_date_modified'];
-		}
-
-		if (isset($this->request->get['sort'])) {
-			$url .= '&sort=' . $this->request->get['sort'];
-		}
-
-		if (isset($this->request->get['order'])) {
-			$url .= '&order=' . $this->request->get['order'];
-		}
-
-		if (isset($this->request->get['page'])) {
-			$url .= '&page=' . $this->request->get['page'];
-		}
-
-		if (isset($this->request->get['limit'])) {
-			$url .= '&limit=' . $this->request->get['limit'];
-		}
-
-		$rdata['breadcrumbs'] = array();
-
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('text_home'),
-			'href'      => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], 'SSL'),
-   		);
-
-   		$rdata['breadcrumbs'][] =array(
-	   		'text'      => $this->language->get('text_extension'),
-			'href'      => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
-   		);
-
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('heading_title_bk_main'),
-			'href'      => $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'),
-   		);
-
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('heading_title_order'),
-			'href'      => $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'),
-   		);
-
-
-		$rdata['token'] = $this->session->data['user_token'];
-
-		$rdata['currency_list'] = $this->getInfo()->getCurrencyList();
-
-		$url = '';
-
-		$url .= '&order_id=' . $this->request->get['order_id'];		
-
-		$rdata['action'] = $this->url->link('extension/module/cdek_integrator/createOrder', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL');
-		$rdata['cancel'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'], 'SSL');
-
-		$rdata['city_default'] = $this->setting['city_default'];
-
-		if ($rdata['city_default']) {
-
-			$rdata['city_id'] = $this->setting['city_id'];
-			$rdata['city_name'] = $this->setting['city_name'];
-
-		}		
-		
-		$rdata['cdek_orders'] = array();
-		$additional_cost_totals = array('shipping', 'cod_cdek_total');
-
-		if (isset($this->request->post['checkpackage'])) {
-			$checkpackage = (int)$this->request->post['checkpackage'];
-		} elseif (isset($this->setting['package_default'])) {
-			$checkpackage = $this->setting['package_default'];
-		} else {
-			$checkpackage = 1;
-		}
-
-		$rdata['checkpackage'] = $checkpackage;
-
-		$order_to_sdek = $this->model_extension_module_cdek_integrator->getOrderToSdek($this->request->get['order_id']);
-
-		$order_info = $this->model_sale_order->getOrder($this->request->get['order_id']);
-
-		if ($order_info && !$this->model_extension_module_cdek_integrator->orderExists($this->request->get['order_id'])) {
-
-			$additional_cost = 0;
-
-			$totals = $this->model_sale_order->getOrderTotals($this->request->get['order_id']);
-
-			foreach ($totals as $totals_key => $totals_value) {
-				$totals[$totals_key]['text'] = $this->currency->format($totals_value['value'], $order_info['currency_code']);
-
-				if (in_array($totals_value['code'], $additional_cost_totals)) {
-					$additional_cost += $totals_value['value'];
-				}
-			}
-
-			$post_data = !empty($this->request->post['cdek_orders']) ? $this->request->post['cdek_orders'] : array();
-
-			if (isset($post_data['currency'])) {
-				$currency = $post_data['currency'];
-			} elseif (in_array($order_info['currency_code'], $rdata['currency_list'])) {
-				$currency = $order_info['currency_code'];
-			} else {
-				$currency = $this->setting['currency'];
-			}
-
-			$exdata = array(
-				'cod'					=> isset($post_data['cod']) ? $post_data['cod'] : $this->setting['cod'],
-				'currency_cod'			=> isset($post_data['currency_cod']) ? $post_data['currency_cod'] : $this->setting['currency_agreement'],
-				'currency'				=> $currency,
-				'city_id'				=> $this->setting['city_id'],
-				'city_name'				=> $this->setting['city_name'],
-				'shipment_point'		=> $this->setting['shipment_point_default'],
-				'recipient_name'		=> isset($post_data['recipient_name']) ? $post_data['recipient_name'] : $order_info['shipping_firstname'] . ' ' . $order_info['shipping_lastname'],
-				'recipient_telephone'	=> isset($post_data['recipient_telephone']) ? $post_data['recipient_telephone'] : $order_info['telephone'],
-				'recipient_email'		=> isset($post_data['recipient_email']) ? $post_data['recipient_email'] : $order_info['email'],
-				'shipping_address'		=> $this->fomatAddress($order_info),
-				'total'					=> $rdata['total'] = $this->currency->format($order_info['total'], $order_info['currency_code'], $order_info['currency_value']),
-				'full_packages'			=> array(),
-				'packages'				=> array(),
-				'totals'				=> $totals
-			);
-
-			$telephone = $exdata['recipient_telephone'];
-			$telephone = trim($telephone);
-			$telephone = preg_replace('/[^0-9]/isu', '', $telephone);
-
-			$pattern = '';
-
-			$prefix = '';
-
-			switch ($order_info['payment_iso_code_2']) {
-				case 'KZ':
-				case 'RU':
-					$pattern = "/^(?:7|8)/isu";
-					$prefix = '+7';
-					break;
-				case 'BY':
-					$pattern = "/^(?:375)/isu";
-					$prefix = '+375';
-					break;
-				case 'GE':
-					$pattern = "/^(?:995)/isu";
-					$prefix = '+995';
-					break;
-				case 'KG':
-					$pattern = "/^(?:996)/isu";
-					$prefix = '+996';
-					break;
-				case 'UZ':
-					$pattern = "/^(?:998)/isu";
-					$prefix = '+998';
-					break;
-				default:
-					$pattern = '/^(?:7|8)/isu';
-					$prefix = '+7';
-			}
-
-			$telephone = preg_replace($pattern, '', $telephone);
-
-			$telephone = $prefix . $telephone;
-
-			$exdata['recipient_telephone'] = $telephone;
-
-			if (!empty($rdata['city_id'])) {
-				$pvz_list_sell = $this->getPVZ($rdata['city_id']);
-			}
-
-			if (!empty($pvz_list_sell['List'])) {
-				$exdata['pvz_list_sell'] = $pvz_list_sell['List'];
-			}
-
-			$default_size = $this->config->get('cdek_integrator_setting');
-
-			$packages = array(
-				1 => $this->model_extension_module_cdek_integrator->getOrderProducts($this->request->get['order_id'])
-			);
-
-			foreach ($packages as $package_id => $products) {
-
-				$i = 0;
-
-				if ($checkpackage === 0) {
-					$package_post = isset($post_data['package'][$package_id]) ? $post_data['package'][$package_id] : array();
-				} else {
-					$package_post = array();
-				}
-
-				$exdata['full_packages'][$package_id] = array(
-					'item'				=> array(),
-					'weight'			=> 0
-				);
-
-				foreach (array('brcode', 'pack', 'size_a', 'size_b', 'size_c') as $item) {
-					$exdata['full_packages'][$package_id][$item] = isset($package_post[$item]) ? $package_post[$item] : '';
-				}
-
-				$total_weight = 0;
-
-				foreach ($products as $product_row => $order_product) {
-
-					$package_item_post = isset($package_post['item'][$product_row]) ? $package_post['item'][$product_row] : array();
-
-					if (isset($order_product['weight'])) {
-						if ($default_size['cdek_default_data']['use']) {
-							switch ($default_size['cdek_default_data']['work_mode']) {
-								case 'all':
-									$weight = isset($package_post['item'][$product_row]['weight']) ? $package_post['item'][$product_row]['weight'] : $default_size['cdek_default_data']['weight'] * 1000;
-									break;
-
-								case 'optional':
-									if (isset($package_post['item'][$product_row]['weight'])) {
-										$weight = $package_post['item'][$product_row]['weight'];
-									} elseif (isset($order_product['weight']) && $order_product['weight'] != 0) {
-										if ($order_product['weight_class_id'] != $this->setting['weight_class_id']) {
-											$weight = $this->weight->convert($order_product['weight'], $order_product['weight_class_id'], $this->setting['weight_class_id']);
-										} else {
-											$weight = $order_product['weight'];
-										}
-									} else {
-										$weight = $default_size['cdek_default_data']['weight'] * 1000;
-									}
-									break;
-							}
-						} else {
-							if ($order_product['weight_class_id'] != $this->setting['weight_class_id']) {
-								$weight = $this->weight->convert($order_product['weight'], $order_product['weight_class_id'], $this->setting['weight_class_id']);
-							} else {
-								$weight = $order_product['weight'];
-							}
-						}
-					} else {
-						$weight = 0;
-					}
-
-					$product_options = $this->model_extension_module_cdek_integrator->getOrderProductOptions($order_product['order_product_id']);
-
-					$product_name = $order_product['name'];
-
-					$option_values = array();
-
-					foreach ($product_options as $product_option) {
-
-						if (!empty($product_option['weight'])) {
-
-							if ($order_product['weight_class_id'] != $this->setting['weight_class_id']) {
-								$option_weight = $this->weight->convert($product_option['weight'], $order_product['weight_class_id'], $this->setting['weight_class_id']);
-							} else {
-								$option_weight = $product_option['weight'];
-							}
-
-							if ($product_option['weight_prefix'] == '+') {
-								$weight += $option_weight;
-							} else {
-								$weight -= $option_weight;
-							}
-
-							if ($weight < 0) {
-								$weight = 0;
-							}
-
-						}
-
-						if ($product_option['type'] != 'file') {
-							$option_values[] = $product_option['name'] . ': ' . $product_option['value'];
-						}
-
-					}
-
-					if (!empty($option_values)) {
-						$product_name .= '(' . implode(', ', $option_values) . ')';
-					}
-
-					$total_weight += $weight * $order_product['quantity'];
-
-					$item_data = array(
-						'order_product_id'	=> $order_product['order_product_id'],
-						'product_id'		=> $order_product['product_id'],
-						'name'				=> $product_name,
-						'weight'			=> isset($package_item_post['weight']) ? $package_item_post['weight'] : $weight,
-						'option'			=> $this->model_sale_order->getOrderOptions($order_id, $order_product['order_product_id']),
-						'quantity'			=> isset($package_item_post['amount']) ? $package_item_post['amount'] : $order_product['quantity'],
-						'price'				=> isset($package_item_post['cost']) ? $package_item_post['cost'] : $order_product['price'],
-						'payment'			=> isset($package_item_post['payment']) ? $package_item_post['payment'] : (isset($order_product['payment']) ? $order_product['payment'] : $order_product['price']),
-						'payment_vat_rate'			=> isset($package_item_post['payment_vat_rate']) ? $package_item_post['payment_vat_rate'] : (isset($order_product['payment_vat_rate']) ? $order_product['payment_vat_rate'] : 0),
-						'payment_vat_sum'			=> isset($package_item_post['payment_vat_sum']) ? $package_item_post['payment_vat_sum'] : (isset($order_product['payment_vat_sum']) ? $order_product['payment_vat_sum'] : 0),
-						'total'				=> $order_product['total'],
-						'tax'				=> $order_product['tax']
-					);
-
-					$item_data['total'] = $this->currency->format(((int)$item_data * $item_data['price']), $order_info['currency_code'], $order_info['currency_value']) . ' / ' . $this->currency->format(((int)$item_data * $item_data['payment']), $order_info['currency_code'], $order_info['currency_value']);
-
-					$exdata['full_packages'][$package_id]['item'][] = $item_data;
-				}
-
-				if (isset($package_post['weight'])) {
-					$exdata['full_packages'][$package_id]['weight'] = $package_post['weight'];
-				} else {
-					$exdata['full_packages'][$package_id]['weight'] = $total_weight;
-				}
-
-				$exdata['full_packages'][$package_id]['additional_weight'] = $this->getPackingWeight($exdata['full_packages'][$package_id]['weight']);
-
-				$i++;
-			}
-
-			$products = $this->model_extension_module_cdek_integrator->getOrderProducts($order_id);
-
-			$item_data = array();
-
-			foreach ($products as $package_id => $order_product) {
-
-				if ($checkpackage === 1) {
-					$package_post = isset($post_data['package'][$package_id]) ? $post_data['package'][$package_id] : array();
-				} else {
-					$package_post = array();
-				}
-
-				$exdata['packages'][$package_id] = array(
-					'item'				=> array(),
-					'weight'			=> 0
-				);
-
-				$exdata['packages'][$package_id]['brcode'] = isset($package_post['brcode']) ? $package_post['brcode'] : '';
-				$exdata['packages'][$package_id]['pack'] = isset($package_post['pack']) ? $package_post['pack'] : '';
-
-				if ($default_size['cdek_default_data']['use']) {
-					switch ($default_size['cdek_default_data']['work_mode']) {
-						case 'all':
-							$exdata['packages'][$package_id]['size_a'] = isset($package_post['size_a']) ? $package_post['size_a'] : $default_size['cdek_default_data']['size_a'];
-							$exdata['packages'][$package_id]['size_b'] = isset($package_post['size_b']) ? $package_post['size_b'] : $default_size['cdek_default_data']['size_b'];
-							$exdata['packages'][$package_id]['size_c'] = isset($package_post['size_c']) ? $package_post['size_c'] : $default_size['cdek_default_data']['size_c'];
-							$weight = isset($package_post['weight']) ? $package_post['weight'] : $default_size['cdek_default_data']['weight'] * 1000;
-						break;
-
-						case 'optional':
-
-							if (isset($package_post['size_a'])) {
-								$exdata['packages'][$package_id]['size_a'] = $package_post['size_a'];
-							} elseif ((int)$order_product['length'] != 0) {
-								$exdata['packages'][$package_id]['size_a'] = (int)$order_product['length'];
-							} else {
-								$exdata['packages'][$package_id]['size_a'] = $default_size['cdek_default_data']['size_a'];
-							}
-
-							if (isset($package_post['size_b'])) {
-								$exdata['packages'][$package_id]['size_b'] = $package_post['size_b'];
-							} elseif ((int)$order_product['width'] != 0) {
-								$exdata['packages'][$package_id]['size_b'] = (int)$order_product['width'];
-							} else {
-								$exdata['packages'][$package_id]['size_b'] = $default_size['cdek_default_data']['size_b'];
-							}
-
-							if (isset($package_post['size_c'])) {
-								$exdata['packages'][$package_id]['size_c'] = $package_post['size_c'];
-							} elseif ((int)$order_product['height'] != 0) {
-								$exdata['packages'][$package_id]['size_c'] = (int)$order_product['height'];
-							} else {
-								$exdata['packages'][$package_id]['size_c'] = $default_size['cdek_default_data']['size_c'];
-							}
-
-							if (isset($package_post['weight'])) {
-								$weight = $package_post['weight'];
-							} elseif (isset($order_product['weight'])) {
-								if ($order_product['weight_class_id'] != $this->setting['weight_class_id']) {
-									$weight = $this->weight->convert($order_product['weight'], $order_product['weight_class_id'], $this->setting['weight_class_id']);
-								} else {
-									$weight = $order_product['weight'];
-								}
-							} else {
-								$weight = $default_size['cdek_default_data']['weight'];
-							}
-
-						break;
-
-					}
-				} else {
-
-					if ((int)$order_product['length'] != 0 && !isset($package_post['size_a'])) {
-						$exdata['packages'][$package_id]['size_a'] = (int)$order_product['length'];
-					} else {
-						$exdata['packages'][$package_id]['size_a'] = isset($package_post['size_a']) ? $package_post['size_a'] : '';
-					}
-
-					if ((int)$order_product['width'] != 0 && !isset($package_post['size_b'])) {
-					  $exdata['packages'][$package_id]['size_b'] = (int)$order_product['width'];
-					} else {
-					  $exdata['packages'][$package_id]['size_b'] = isset($package_post['size_b']) ? $package_post['size_b'] : '';
-					}
-
-					if ((int)$order_product['height'] != 0 && !isset($package_post['size_c'])) {
-					  $exdata['packages'][$package_id]['size_c'] = (int)$order_product['height'];
-					} else {
-					  $exdata['packages'][$package_id]['size_c'] = isset($package_post['size_c']) ? $package_post['size_c'] : '';
-					}
-
-					if (isset($order_product['weight'])) {
-
-						if ($order_product['weight_class_id'] != $this->setting['weight_class_id']) {
-							$weight = $this->weight->convert($order_product['weight'], $order_product['weight_class_id'], $this->setting['weight_class_id']);
-						} else {
-							$weight = $order_product['weight'];
-						}
-
-					} else {
-						$weight = 0;
-					}
-
-				}
-
-				$package_item_post = isset($package_post['item'][$package_id]) ? $package_post['item'][$package_id] : array();
-
-				$product_options = $this->model_extension_module_cdek_integrator->getOrderProductOptions($order_product['order_product_id']);
-
-				$product_name = $order_product['name'];
-
-				$option_values = array();
-
-				foreach ($product_options as $product_option) {
-
-					if (!empty($product_option['weight'])) {
-
-						if ($order_product['weight_class_id'] != $this->setting['weight_class_id']) {
-							$option_weight = $this->weight->convert($product_option['weight'], $order_product['weight_class_id'], $this->setting['weight_class_id']);
-						} else {
-							$option_weight = $product_option['weight'];
-						}
-
-						if ($product_option['weight_prefix'] == '+') {
-							$weight += $option_weight;
-						} else {
-							$weight -= $option_weight;
-						}
-
-						if ($weight < 0) {
-							$weight = 0;
-						}
-
-					}
-
-					if ($product_option['type'] != 'file') {
-						$option_values[] = $product_option['name'] . ': ' . $product_option['value'];
-					}
-
-				}
-
-				if (!empty($option_values)) {
-					$product_name .= '(' . implode(', ', $option_values) . ')';
-				}
-
-				$total_weight = $weight * $order_product['quantity'];
-
-				$item_data = array(
-					'order_product_id'	=> $order_product['order_product_id'],
-					'product_id'		=> $order_product['product_id'],
-					'name'				=> $product_name,
-					'weight'			=> isset($package_item_post['weight']) ? $package_item_post['weight'] : $weight,
-					'option'			=> $this->model_sale_order->getOrderOptions($order_id, $order_product['order_product_id']),
-					'quantity'			=> isset($package_item_post['amount']) ? $package_item_post['amount'] : $order_product['quantity'],
-					'price'				=> isset($package_item_post['cost']) ? $package_item_post['cost'] : $order_product['price'],
-					'payment'			=> isset($package_item_post['payment']) ? $package_item_post['payment'] : (isset($order_product['payment']) ? $order_product['payment'] : $order_product['price']),
-					'payment_vat_rate'	=> isset($package_item_post['payment_vat_rate']) ? $package_item_post['payment_vat_rate'] : (isset($order_product['payment_vat_rate']) ? $order_product['payment_vat_rate'] : 0),
-					'payment_vat_sum'	=> isset($package_item_post['payment_vat_sum']) ? $package_item_post['payment_vat_sum'] : (isset($order_product['payment_vat_sum']) ? $order_product['payment_vat_sum'] : 0),
-					'total'				=> $order_product['total'],
-					'tax'				=> $order_product['tax']
-				);
-
-				$item_data['total'] = $this->currency->format(((int)$item_data * $item_data['price']), $order_info['currency_code'], $order_info['currency_value']) . ' / ' . $this->currency->format(((int)$item_data * $item_data['payment']), $order_info['currency_code'], $order_info['currency_value']);
-
-				$exdata['packages'][$package_id]['item'][] = $item_data;
-
-				$exdata['packages'][$package_id]['weight'] = $total_weight;
-
-				$exdata['packages'][$package_id]['additional_weight'] = $this->getPackingWeight($exdata['packages'][$package_id]['weight']);
-			}
-
-			if (isset($post_data['courier'])) {
-				$exdata['courier'] = $post_data['courier'];
-			} else {
-				$exdata['courier'] = array(
-					'city_id'	=> $this->setting['city_id'],
-					'city_name'	=> $this->setting['city_name'],
-					'send_phone'	=> $this->config->get('config_telephone'),
-					'sender_name'	=> $this->config->get('config_owner')
-				);
-			}
-
-			if (!empty($post_data)) {
-
-				foreach (array('city_id', 'city_name', 'tariff_id', 'mode_id', 'recipient_city_id', 'recipient_city_name', 'delivery_recipient_cost', 'delivery_recipient_vat_rate', 'delivery_recipient_vat_sum', 'seller_name', 'cdek_comment', 'package', 'schedule', 'add_service') as $item) {
-
-					if (isset($post_data[$item])) {
-						$exdata[$item] = $post_data[$item];
-					}
-
-				}
-
-				foreach (array('street', 'house', 'flat', 'pvz_code') as $item) {
-
-					if (isset($post_data['address'][$item])) {
-						$exdata['address'][$item] = $post_data['address'][$item];
-					}
-
-				}
-
-				if (!empty($exdata['recipient_city_id'])) {
-
-					$pvz_list = $this->getPVZ($exdata['recipient_city_id']);
-
-					if (isset($pvz_list['List'])) {
-						$exdata['pvz_list'] = $pvz_list['List'];
-					}
-
-				}
-
-			} elseif ($order_info['shipping_city'] != '') {
-				if (!empty($this->setting['delivery_recipient_cost']) || (int)$this->setting['delivery_recipient_cost'] !== 0) {
-					$exdata['delivery_recipient_cost'] = $this->setting['delivery_recipient_cost'];
-				} elseif ($additional_cost) {
-					$exdata['delivery_recipient_cost'] = $additional_cost;
-				}
-
-				if (!empty($this->setting['seller_name'])) {
-					$exdata['seller_name'] = $this->setting['seller_name'];
-				}
-
-				if (!empty($this->setting['add_service'])) {
-					$exdata['add_service'] = array_flip($this->setting['add_service']);
-				}
-
-				$city_info = $this->getCity($order_info['shipping_city'], $order_info['shipping_country_id'], $order_info['shipping_zone_id']);
-
-				if (isset($city_info['id'])) {
-
-					$exdata += array(
-						'recipient_city_id'		=> $city_info['id'],
-						'recipient_city_name'	=> $city_info['name']
-					);
-
-					$pvz_list = $this->getPVZ($city_info['id']);
-
-					if (!empty($pvz_list['List'])) {
-						$exdata['pvz_list'] = $pvz_list['List'];
-					}
-
-				}
-
-				if ($order_to_sdek['cityId']) {
-					$city_info = $this->model_extension_module_cdek_integrator->getCityById((int)$order_to_sdek['cityId']);
-					$exdata += array(
-						'recipient_city_id'		=> $order_to_sdek['cityId'],
-						'recipient_city_name'	=> $city_info['name']
-					);
-
-					$pvz_list = $this->getPVZ($order_to_sdek['cityId']);
-
-					if (!empty($pvz_list['List'])) {
-						$exdata['pvz_list'] = $pvz_list['List'];
-					}
-				}
-
-				if (isset($order_info['shipping_code'])) {
-
-					$parts = explode('.', $order_info['shipping_code']);
-
-					if ($parts[0] == 'cdek' && !empty($parts[1])) {
-
-						$tariff_parts = explode('_', $parts[1]);
-
-						if (count($tariff_parts) == 3) {
-
-							list(,$tariff_id, $pvz_code) = $tariff_parts;
-
-							$tariff_info = $this->getInfo()->getTariffInfo($tariff_id);
-							if ($order_to_sdek['pvz_code']) {
-								$pvz_code=$order_to_sdek['pvz_code'];
-							}
-							if ($tariff_info) {
-
-								$exdata += array(
-									'tariff_id' => $tariff_id,
-									'mode_id'	=> $tariff_info['mode_id'],
-									'address'	=> array(
-										'pvz_code'	=> $pvz_code
-									)
-								);
-
-							}
-
-						}
-
-					}
-
-				}
-
-			}
-
-			if (!empty($exdata['pvz_list']) && !empty($exdata['address']['pvz_code'])) {
-
-				foreach ($pvz_list['List'] as $pvz_info) {
-
-					if ($pvz_info['Code'] == $exdata['address']['pvz_code']) {
-
-						$exdata['pvz_info'] = $pvz_info;
-
-						break;
-					}
-
-				}
-
-			}		
-
-			$rdata['cdek_orders'] = $exdata + $order_info;
-		}
-
-		$rdata['sell_address'] = $this->config->get('config_address');
-		$rdata['tariff_list'] = $this->getInfo()->getTariffList();
-		$rdata['vat_rate_list'] = $this->getInfo()->getVatRates();
-		$rdata['add_cervices'] = $this->getInfo()->getAddServices();
-		$rdata['ownership_forms'] = $this->getInfo()->getOwnershipForm();
-
-		$rdata['date'] = $this->getDateExecuted('Y-m-d');
-
-		$rdata['number'] = uniqid();
-
-		$rdata['login'] = $this->setting['account'];
-
-		$default_timezone = date_default_timezone_get();
-		date_default_timezone_set('UTC');
-
-		$rdata['pass'] = $this->setting['secure_password'];
-
-		date_default_timezone_set($default_timezone);
-
-		$rdata['header'] = $this->load->controller('common/header');
-		$rdata['column_left'] = $this->load->controller('common/column_left');
-		$rdata['footer'] = $this->load->controller('common/footer');
-
-		$this->response->setOutput($this->templateOutput('order_form', $rdata));
-	}
-
-	public function option() {
-
-		if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validateOption()) {
-
-			$this->load->model('setting/setting');
-			$this->model_setting_setting->editSetting('cdek_integrator_setting', $this->request->post);
-
-			$this->session->data['success'] = $this->language->get('text_success');
-
-			if (isset($this->request->get['redirect'])) {
-				$redirect = $this->url->link('extension/module/cdek_integrator/option', 'user_token=' . $this->session->data['user_token'], 'SSL');
-			} else {
-				$redirect = $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL');
-			}
-
-			$this->response->redirect($redirect);
-		}
-
-		$this->load->model('localisation/order_status');
-		$this->load->model('localisation/weight_class');
-		$this->load->model('localisation/length_class');
-
-		$this->document->setTitle($this->language->get('heading_title_option'));
-
-		$rdata['heading_title'] = $this->language->get('heading_title_option');
-
-		$rdata['text_city_from'] = $this->language->get('text_city_from');
-		$rdata['text_tokens'] = $this->language->get('text_tokens');
-		$rdata['text_token_dispatch_number'] = $this->language->get('text_token_dispatch_number');
-		$rdata['text_token_order_id'] = $this->language->get('text_token_order_id');
-		$rdata['text_help_status_rule'] = $this->language->get('text_help_status_rule');
-		$rdata['text_none'] = $this->language->get('text_none');
-
-		$rdata['entry_city'] = $this->language->get('entry_city');
-		$rdata['entry_copy_count'] = $this->language->get('entry_copy_count');
-		$rdata['entry_weight_default'] = $this->language->get('entry_weight_default');
-		$rdata['entry_default_data'] = $this->language->get('entry_default_data');
-		$rdata['entry_data_work_mode_default'] = $this->language->get('entry_data_work_mode_default');
-		$rdata['entry_weight_class_id'] = $this->language->get('entry_weight_class_id');
-		$rdata['entry_length_class_id'] = $this->language->get('entry_length_class_id');
-		$rdata['entry_account'] = $this->language->get('entry_account');
-		$rdata['entry_secure_password'] = $this->language->get('entry_secure_password');
-		$rdata['entry_new_order_status_id'] = $this->language->get('entry_new_order_status_id');
-		$rdata['entry_shipping_methods'] = $this->language->get('entry_shipping_methods');
-		$rdata['entry_payment_methods'] = $this->language->get('entry_payment_methods');
-		$rdata['entry_new_order'] = $this->language->get('entry_new_order');
-		$rdata['entry_city_default'] = $this->language->get('entry_city_default');
-		$rdata['entry_packing_min_weight'] = $this->language->get('entry_packing_min_weight');
-		$rdata['entry_packing_additional_weight'] = $this->language->get('entry_packing_additional_weight');
-		$rdata['entry_cod_default'] = $this->language->get('entry_cod_default');
-		$rdata['entry_delivery_recipient_cost'] = $this->language->get('entry_delivery_recipient_cost');
-		$rdata['entry_seller_name'] = $this->language->get('entry_seller_name');
-		$rdata['entry_add_service'] = $this->language->get('entry_add_service');
-		$rdata['entry_replace_items'] = $this->language->get('entry_replace_items');
-		$rdata['entry_replace_item_name'] = $this->language->get('entry_replace_item_name');
-		$rdata['entry_replace_item_cost'] = $this->language->get('entry_replace_item_cost');
-		$rdata['entry_replace_item_payment'] = $this->language->get('entry_replace_item_payment');
-		$rdata['entry_replace_item_amount'] = $this->language->get('entry_replace_item_amount');
-		$rdata['entry_use_cron'] = $this->language->get('entry_use_cron');
-		$rdata['entry_currency'] = $this->language->get('entry_currency');
-		$rdata['entry_currency_agreement'] = $this->language->get('entry_currency_agreement');
-
-		$rdata['text_testing_api_keys'] = sprintf($this->language->get('text_testing_api_keys'), cdek_integrator::TEST_ACCOUNT, cdek_integrator::TEST_SECURE_PASSWORD);
-
-		$rdata['column_token'] = $this->language->get('column_token');
-		$rdata['column_value'] = $this->language->get('column_value');
-		$rdata['column_cdek_status'] = $this->language->get('column_cdek_status');
-		$rdata['column_new_status'] = $this->language->get('column_new_status');
-		$rdata['column_notify'] = $this->language->get('column_notify');
-		$rdata['column_comment'] = $this->language->get('column_comment');
-		$rdata['column_action'] = $this->language->get('column_action');
-
-		$rdata['tab_data'] = $this->language->get('tab_data');
-		$rdata['tab_auth'] = $this->language->get('tab_auth');
-		$rdata['tab_order'] = $this->language->get('tab_order');
-		$rdata['tab_package'] = $this->language->get('tab_additional_weight');
-		$rdata['tab_status'] = $this->language->get('tab_status');
-		$rdata['tab_currency'] = $this->language->get('tab_currency');
-		$rdata['tab_additional'] = $this->language->get('tab_additional');
-
-		$rdata['button_save'] = $this->language->get('button_save');
-		$rdata['button_apply'] = $this->language->get('button_apply');
-		$rdata['button_cancel'] = $this->language->get('button_cancel');
-
-		$rdata['boolean_variables'] = array($this->language->get('text_no'), $this->language->get('text_yes'));
-
-		$rdata['default_work_mode'] = array(
-			'all'		=> $this->language->get('text_mode_product_all'),
-			'optional'	=> $this->language->get('text_mode_product_optional')
-		);
-
-		$rdata['additional_weight_mode'] = array(
-			'fixed'			=> $this->language->get('text_weight_fixed'),
-			'all_percent'	=> $this->language->get('text_weight_all')
-		);
-
-		$rdata['currency_list'] = $this->getInfo()->getCurrencyList();
-
-		if (isset($this->error['warning'])) {
-			$rdata['error_warning'] = $this->error['warning'];
-		} else {
-			$rdata['error_warning'] = '';
-		}
-
-		$rdata['error'] = $this->error;
-
-		if (isset($this->session->data['success'])) {
-			$rdata['success'] = $this->session->data['success'];
-
-			unset($this->session->data['success']);
-		} else {
-			$rdata['success'] = '';
-		}
-
-		$rdata['breadcrumbs'] = array();
-
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('text_home'),
-			'href'      => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], 'SSL'),
-   		);
-
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('text_extension'),
-			'href'      => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
-   		);
-
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('heading_title_bk_main'),
-			'href'      => $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'),
-   		);
-
-		if (isset($this->request->post['cdek_integrator_setting'])) {
-			$rdata['setting'] = $this->request->post['cdek_integrator_setting'];
-		} else {
-			$rdata['setting'] = $this->setting;
-		}
-
-		if (!isset($rdata['setting']['cod'])) {
-			$rdata['setting']['cod'] = 1;
-		}
-		
-		if (!empty($this->setting['city_id'])) {
-			$pvz_list_sell = $this->getPVZ($this->setting['city_id']);
-		}
-
-		if (!empty($pvz_list_sell['List'])) {
-			$rdata['pvz_list_sell'] = $pvz_list_sell['List'];
-		} else {
-			$rdata['pvz_list_sell'] = [];
-		}
-
-		$rdata['action'] = $this->url->link('extension/module/cdek_integrator/option', 'user_token=' . $this->session->data['user_token'], 'SSL');
-		$rdata['update_city'] = $this->url->link('extension/module/cdek_integrator/updateCities', 'user_token=' . $this->session->data['user_token'] . '&redirect=extension/module/cdek_integrator/option', true);
-		$rdata['cancel'] = $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL');
-
-		$rdata['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
-		$rdata['cdek_statuses'] = $this->getInfo()->getOrderStatuses();
-
-		$rdata['show_filter'] = version_compare(VERSION, '1.5.1.3', '>') || (strpos(VERSION, '1.5.1') !== FALSE);
-
-		$rdata['payment_methods'] = $this->getPaymentMethods();
-		$rdata['shipping_methods'] = $this->getShippingMethods();
-		$rdata['weight_classes'] = $this->model_localisation_weight_class->getWeightClasses();
-		$rdata['length_classes'] = $this->model_localisation_length_class->getLengthClasses();
-		$rdata['add_cervices'] = $this->getInfo()->getAddServices();
-
-		$rdata['header'] = $this->load->controller('common/header');
-		$rdata['column_left'] = $this->load->controller('common/column_left');
-		$rdata['footer'] = $this->load->controller('common/footer');
-
-		$rdata['token'] = $this->request->get['user_token'];
-
-		$this->response->setOutput($this->templateOutput('option', $rdata));
-	}
-
-	public function dispatch() {
-
-		if ($this->new_application) {
-			$this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-		}
-
-		$this->document->setTitle($this->language->get('heading_title_dispatch'));
-
-		$this->load->model('extension/module/cdek_integrator');
-
-		$this->dispatchList();
-
-	}
-
-	private function dispatchList() {
-
-		if ($this->new_application) {
-			$this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-		}
-
-		if (isset($this->request->get['filter_order_id'])) {
-			$filter_order_id = $this->request->get['filter_order_id'];
-		} else {
-			$filter_order_id = NULL;
-		}
-
-		if (isset($this->request->get['filter_dispatch_number'])) {
-			$filter_dispatch_number = $this->request->get['filter_dispatch_number'];
-		} else {
-			$filter_dispatch_number = NULL;
-		}
-
-		if (isset($this->request->get['filter_act_number'])) {
-			$filter_act_number = $this->request->get['filter_act_number'];
-		} else {
-			$filter_act_number = NULL;
-		}
-
-		if (isset($this->request->get['filter_date'])) {
-			$filter_date = $this->request->get['filter_date'];
-		} else {
-			$filter_date = NULL;
-		}
-
-		if (isset($this->request->get['filter_city_from'])) {
-			$filter_city_from = $this->request->get['filter_city_from'];
-		} else {
-			$filter_city_from = NULL;
-		}
-
-		if (isset($this->request->get['filter_city_to'])) {
-			$filter_city_to = $this->request->get['filter_city_to'];
-		} else {
-			$filter_city_to = NULL;
-		}
-
-		if (isset($this->request->get['filter_status_id'])) {
-			$filter_status_id = $this->request->get['filter_status_id'];
-		} else {
-			$filter_status_id = NULL;
-		}
-
-		if (isset($this->request->get['filter_total'])) {
-			$filter_total = $this->request->get['filter_total'];
-		} else {
-			$filter_total = NULL;
-		}
-
-		if (isset($this->request->get['sort'])) {
-			$sort = $this->request->get['sort'];
-		} else {
-			$sort = 'd.date';
-		}
-
-		if (isset($this->request->get['order'])) {
-			$order = $this->request->get['order'];
-		} else {
-			$order = 'DESC';
-		}
-
-		if (isset($this->request->get['page'])) {
-			$page = $this->request->get['page'];
-		} else {
-			$page = 1;
-		}
-
-		if (isset($this->request->get['limit']) && in_array($this->request->get['limit'], $this->limits)) {
-			$limit = $this->request->get['limit'];
-		} else {
-			$limit = reset($this->limits);
-		}
-
-		$url = '';
-
-		if (isset($this->request->get['filter_order_id'])) {
-			$url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
-		}
-
-		if (isset($this->request->get['filter_dispatch_number'])) {
-			$url .= '&filter_dispatch_number=' . $this->request->get['filter_dispatch_number'];
-		}
-
-		if (isset($this->request->get['filter_act_number'])) {
-			$url .= '&filter_act_number=' . $this->request->get['filter_act_number'];
-		}
-
-		if (isset($this->request->get['filter_date'])) {
-			$url .= '&filter_date=' . $this->request->get['filter_date'];
-		}
-
-		if (isset($this->request->get['filter_city_from'])) {
-			$url .= '&filter_city_from=' . $this->request->get['filter_city_from'];
-		}
-
-		if (isset($this->request->get['filter_city_to'])) {
-			$url .= '&filter_city_to=' . $this->request->get['filter_city_to'];
-		}
-
-		if (isset($this->request->get['filter_status_id'])) {
-			$url .= '&filter_status_id=' . $this->request->get['filter_status_id'];
-		}
-
-		if (isset($this->request->get['filter_total'])) {
-			$url .= '&filter_total=' . $this->request->get['filter_total'];
-		}
-
-		if (isset($this->request->get['sort'])) {
-			$url .= '&sort=' . $this->request->get['sort'];
-		}
-
-		if (isset($this->request->get['order'])) {
-			$url .= '&order=' . $this->request->get['order'];
-		}
-
-		if (isset($this->request->get['page'])) {
-			$url .= '&page=' . $this->request->get['page'];
-		}
-
-		if (isset($this->request->get['limit'])) {
-			$url .= '&limit=' . $this->request->get['limit'];
-		}
-
-		$rdata['breadcrumbs'] = array();
-
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('text_home'),
-			'href'      => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'),
-   		);
-
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('text_extension'),
-			'href'      => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
-   		);
-
-   		$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('heading_title_bk_main'),
-			'href'      => $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'),
-   		);
-
-		$rdata['cancel'] = $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL');
-
-		$rdata['dispatches'] = array();
-
-		$exdata = array(
-			'filter_order_id'			=> $filter_order_id,
-			'filter_dispatch_number'	=> $filter_dispatch_number,
-			'filter_act_number'			=> $filter_act_number,
-			'filter_date'				=> $filter_date,
-			'filter_city_from'			=> $filter_city_from,
-			'filter_city_to'			=> $filter_city_to,
-			'filter_status_id'			=> $filter_status_id,
-			'filter_total'				=> $filter_total,
-			'sort'						=> $sort,
-			'order'						=> $order,
-			'start'						=> ($page - 1) * $limit,
-			'limit'						=> $limit
-		);
-
-		$results = $this->model_extension_module_cdek_integrator->getDispatchList($exdata);
-
-		$order_total = $this->model_extension_module_cdek_integrator->getDispatchTotal($exdata);
-
-		foreach ($results as $dispatch_info) {
-
-			$action = array();
-
-			$action[] = array(
-				'text' => $this->language->get('text_view'),
-				'href' => $this->url->link('extension/module/cdek_integrator/dispatchView', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $dispatch_info['order_id'] . $url, 'SSL')
-			);
-
-			$action[] = array(
-				'text'	=> $this->language->get('text_sync'),
-				'href'	=> $this->url->link('extension/module/cdek_integrator/dispatchSync', 'user_token=' . $this->session->data['user_token'] . '&target=list&order_id=' . $dispatch_info['order_id'] . $url, 'SSL'),
-				'class'	=> 'js sync'
-			);
-
-			if ($dispatch_info['status_id'] == "ACCEPTED" || $dispatch_info['status_id'] == 'INVALID') {
-
-				$action[] = array(
-					'text' => $this->language->get('text_delete'),
-					'href' => $this->url->link('extension/module/cdek_integrator/dispatchDelete', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $dispatch_info['order_id'] . $url, 'SSL'),
-					'class'	=> 'delete'
-				);
-
-			}
-
-			if (is_null($dispatch_info['act_number'])) {
-				$dispatch_info['act_number'] = FALSE;
-			}
-
-			$rdata['dispatches'][] = array(
-				'order_id'				=> $dispatch_info['order_id'],
-				'dispatch_number'		=> $dispatch_info['dispatch_number'],
-				'act_number'			=> $dispatch_info['act_number'],
-				'cdek_number'           => $dispatch_info['cdek_number'],
-				'date'					=> $this->formatDate($dispatch_info['date']),
-				'city_name'				=> $dispatch_info['city_name'],
-				'recipient_city_name'	=> $dispatch_info['recipient_city_name'],
-				'status'				=> $dispatch_info['status_description'],
-				'status_date'			=> $this->formatDate($dispatch_info['status_date']),
-				'cost'					=> (float)$dispatch_info['delivery_cost'] ? $this->currency->format($dispatch_info['delivery_cost'], $this->config->get('config_currency')) : '',
-				'action'				=> $action
-			);
-
-		}
-
-		$rdata['heading_title'] = $this->language->get('heading_title_dispatch');
-
-		$rdata['text_no_results'] = $this->language->get('text_no_results');
-		$rdata['text_missing'] = $this->language->get('text_missing');
-
-		/*$rdata['column_order_id'] = $this->language->get('column_order_id');
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('text_extension'),
+            'href'      => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
+        );
+
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('heading_title_bk_main'),
+            'href'      => $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'),
+        );
+
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('heading_title_order'),
+            'href'      => $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'),
+        );
+
+
+        $rdata['token'] = $this->session->data['user_token'];
+
+        $rdata['currency_list'] = $this->getInfo()->getCurrencyList();
+
+        $url = '';
+
+        $url .= '&order_id=' . $this->request->get['order_id'];
+
+        $rdata['action'] = $this->url->link('extension/module/cdek_integrator/createOrder', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL');
+        $rdata['cancel'] = $this->url->link('extension/module/cdek_integrator/order', 'user_token=' . $this->session->data['user_token'], 'SSL');
+
+        $rdata['city_default'] = $this->setting['city_default'];
+
+        if ($rdata['city_default']) {
+
+            $rdata['city_id'] = $this->setting['city_id'];
+            $rdata['city_name'] = $this->setting['city_name'];
+        }
+
+        $rdata['cdek_orders'] = array();
+        $additional_cost_totals = array('shipping', 'cod_cdek_total');
+
+        if (isset($this->request->post['checkpackage'])) {
+            $checkpackage = (int)$this->request->post['checkpackage'];
+        } elseif (isset($this->setting['package_default'])) {
+            $checkpackage = $this->setting['package_default'];
+        } else {
+            $checkpackage = 1;
+        }
+
+        $rdata['checkpackage'] = $checkpackage;
+
+        $order_to_sdek = $this->model_extension_module_cdek_integrator->getOrderToSdek($this->request->get['order_id']);
+
+        $order_info = $this->model_sale_order->getOrder($this->request->get['order_id']);
+
+        if ($order_info && !$this->model_extension_module_cdek_integrator->orderExists($this->request->get['order_id'])) {
+
+            $additional_cost = 0;
+
+            $totals = $this->model_sale_order->getOrderTotals($this->request->get['order_id']);
+
+            foreach ($totals as $totals_key => $totals_value) {
+                $totals[$totals_key]['text'] = $this->currency->format($totals_value['value'], $order_info['currency_code']);
+
+                if (in_array($totals_value['code'], $additional_cost_totals)) {
+                    $additional_cost += $totals_value['value'];
+                }
+            }
+
+            $post_data = !empty($this->request->post['cdek_orders']) ? $this->request->post['cdek_orders'] : array();
+
+            if (isset($post_data['currency'])) {
+                $currency = $post_data['currency'];
+            } elseif (in_array($order_info['currency_code'], $rdata['currency_list'])) {
+                $currency = $order_info['currency_code'];
+            } else {
+                $currency = $this->setting['currency'];
+            }
+
+            $exdata = array(
+                'cod'                    => isset($post_data['cod']) ? $post_data['cod'] : $this->setting['cod'],
+                'currency_cod'            => isset($post_data['currency_cod']) ? $post_data['currency_cod'] : $this->setting['currency_agreement'],
+                'currency'                => $currency,
+                'city_id'                => $this->setting['city_id'],
+                'city_name'                => $this->setting['city_name'],
+                'shipment_point'        => $this->setting['shipment_point_default'],
+                'recipient_name'        => isset($post_data['recipient_name']) ? $post_data['recipient_name'] : $order_info['shipping_firstname'] . ' ' . $order_info['shipping_lastname'],
+                'recipient_telephone'    => isset($post_data['recipient_telephone']) ? $post_data['recipient_telephone'] : $order_info['telephone'],
+                'recipient_email'        => isset($post_data['recipient_email']) ? $post_data['recipient_email'] : $order_info['email'],
+                'shipping_address'        => $this->fomatAddress($order_info),
+                'total'                    => $rdata['total'] = $this->currency->format($order_info['total'], $order_info['currency_code'], $order_info['currency_value']),
+                'full_packages'            => array(),
+                'packages'                => array(),
+                'totals'                => $totals
+            );
+
+            $telephone = $exdata['recipient_telephone'];
+            $telephone = trim($telephone);
+            $telephone = preg_replace('/[^0-9]/isu', '', $telephone);
+
+            $pattern = '';
+
+            $prefix = '';
+
+            switch ($order_info['payment_iso_code_2']) {
+                case 'KZ':
+                case 'RU':
+                    $pattern = "/^(?:7|8)/isu";
+                    $prefix = '+7';
+                    break;
+                case 'BY':
+                    $pattern = "/^(?:375)/isu";
+                    $prefix = '+375';
+                    break;
+                case 'GE':
+                    $pattern = "/^(?:995)/isu";
+                    $prefix = '+995';
+                    break;
+                case 'KG':
+                    $pattern = "/^(?:996)/isu";
+                    $prefix = '+996';
+                    break;
+                case 'UZ':
+                    $pattern = "/^(?:998)/isu";
+                    $prefix = '+998';
+                    break;
+                default:
+                    $pattern = '/^(?:7|8)/isu';
+                    $prefix = '+7';
+            }
+
+            $telephone = preg_replace($pattern, '', $telephone);
+
+            $telephone = $prefix . $telephone;
+
+            $exdata['recipient_telephone'] = $telephone;
+
+            if (!empty($rdata['city_id'])) {
+                $pvz_list_sell = $this->getPVZ($rdata['city_id']);
+            }
+
+            if (!empty($pvz_list_sell['List'])) {
+                $exdata['pvz_list_sell'] = $pvz_list_sell['List'];
+            }
+
+            $default_size = $this->config->get('cdek_integrator_setting');
+
+            $packages = array(
+                1 => $this->model_extension_module_cdek_integrator->getOrderProducts($this->request->get['order_id'])
+            );
+
+            foreach ($packages as $package_id => $products) {
+
+                $i = 0;
+
+                if ($checkpackage === 0) {
+                    $package_post = isset($post_data['package'][$package_id]) ? $post_data['package'][$package_id] : array();
+                } else {
+                    $package_post = array();
+                }
+
+                $exdata['full_packages'][$package_id] = array(
+                    'item'                => array(),
+                    'weight'            => 0
+                );
+
+                foreach (array('brcode', 'pack', 'size_a', 'size_b', 'size_c') as $item) {
+                    $exdata['full_packages'][$package_id][$item] = isset($package_post[$item]) ? $package_post[$item] : '';
+                }
+
+                $total_weight = 0;
+
+                foreach ($products as $product_row => $order_product) {
+
+                    $package_item_post = isset($package_post['item'][$product_row]) ? $package_post['item'][$product_row] : array();
+
+                    if (isset($order_product['weight'])) {
+                        if ($default_size['cdek_default_data']['use']) {
+                            switch ($default_size['cdek_default_data']['work_mode']) {
+                                case 'all':
+                                    $weight = isset($package_post['item'][$product_row]['weight']) ? $package_post['item'][$product_row]['weight'] : $default_size['cdek_default_data']['weight'] * 1000;
+                                    break;
+
+                                case 'optional':
+                                    if (isset($package_post['item'][$product_row]['weight'])) {
+                                        $weight = $package_post['item'][$product_row]['weight'];
+                                    } elseif (isset($order_product['weight']) && $order_product['weight'] != 0) {
+                                        if ($order_product['weight_class_id'] != $this->setting['weight_class_id']) {
+                                            $weight = $this->weight->convert($order_product['weight'], $order_product['weight_class_id'], $this->setting['weight_class_id']);
+                                        } else {
+                                            $weight = $order_product['weight'];
+                                        }
+                                    } else {
+                                        $weight = $default_size['cdek_default_data']['weight'] * 1000;
+                                    }
+                                    break;
+                            }
+                        } else {
+                            if ($order_product['weight_class_id'] != $this->setting['weight_class_id']) {
+                                $weight = $this->weight->convert($order_product['weight'], $order_product['weight_class_id'], $this->setting['weight_class_id']);
+                            } else {
+                                $weight = $order_product['weight'];
+                            }
+                        }
+                    } else {
+                        $weight = 0;
+                    }
+
+                    $product_options = $this->model_extension_module_cdek_integrator->getOrderProductOptions($order_product['order_product_id']);
+
+                    $product_name = $order_product['name'];
+
+                    $option_values = array();
+
+                    foreach ($product_options as $product_option) {
+
+                        if (!empty($product_option['weight'])) {
+
+                            if ($order_product['weight_class_id'] != $this->setting['weight_class_id']) {
+                                $option_weight = $this->weight->convert($product_option['weight'], $order_product['weight_class_id'], $this->setting['weight_class_id']);
+                            } else {
+                                $option_weight = $product_option['weight'];
+                            }
+
+                            if ($product_option['weight_prefix'] == '+') {
+                                $weight += $option_weight;
+                            } else {
+                                $weight -= $option_weight;
+                            }
+
+                            if ($weight < 0) {
+                                $weight = 0;
+                            }
+                        }
+
+                        if ($product_option['type'] != 'file') {
+                            $option_values[] = $product_option['name'] . ': ' . $product_option['value'];
+                        }
+                    }
+
+                    if (!empty($option_values)) {
+                        $product_name .= '(' . implode(', ', $option_values) . ')';
+                    }
+
+                    $total_weight += $weight * $order_product['quantity'];
+
+                    $item_data = array(
+                        'order_product_id'    => $order_product['order_product_id'],
+                        'product_id'        => $order_product['product_id'],
+                        'name'                => $product_name,
+                        'weight'            => isset($package_item_post['weight']) ? $package_item_post['weight'] : $weight,
+                        'option'            => $this->model_sale_order->getOrderOptions($order_id, $order_product['order_product_id']),
+                        'quantity'            => isset($package_item_post['amount']) ? $package_item_post['amount'] : $order_product['quantity'],
+                        'price'                => isset($package_item_post['cost']) ? $package_item_post['cost'] : $order_product['price'],
+                        'payment'            => isset($package_item_post['payment']) ? $package_item_post['payment'] : (isset($order_product['payment']) ? $order_product['payment'] : $order_product['price']),
+                        'payment_vat_rate'            => isset($package_item_post['payment_vat_rate']) ? $package_item_post['payment_vat_rate'] : (isset($order_product['payment_vat_rate']) ? $order_product['payment_vat_rate'] : 0),
+                        'payment_vat_sum'            => isset($package_item_post['payment_vat_sum']) ? $package_item_post['payment_vat_sum'] : (isset($order_product['payment_vat_sum']) ? $order_product['payment_vat_sum'] : 0),
+                        'total'                => $order_product['total'],
+                        'tax'                => $order_product['tax']
+                    );
+
+                    $item_data['total'] = $this->currency->format(((int)$item_data * $item_data['price']), $order_info['currency_code'], $order_info['currency_value']) . ' / ' . $this->currency->format(((int)$item_data * $item_data['payment']), $order_info['currency_code'], $order_info['currency_value']);
+
+                    $exdata['full_packages'][$package_id]['item'][] = $item_data;
+                }
+
+                if (isset($package_post['weight'])) {
+                    $exdata['full_packages'][$package_id]['weight'] = $package_post['weight'];
+                } else {
+                    $exdata['full_packages'][$package_id]['weight'] = $total_weight;
+                }
+
+                $exdata['full_packages'][$package_id]['additional_weight'] = $this->getPackingWeight($exdata['full_packages'][$package_id]['weight']);
+
+                $i++;
+            }
+
+            $products = $this->model_extension_module_cdek_integrator->getOrderProducts($order_id);
+
+            $item_data = array();
+
+            foreach ($products as $package_id => $order_product) {
+
+                if ($checkpackage === 1) {
+                    $package_post = isset($post_data['package'][$package_id]) ? $post_data['package'][$package_id] : array();
+                } else {
+                    $package_post = array();
+                }
+
+                $exdata['packages'][$package_id] = array(
+                    'item'                => array(),
+                    'weight'            => 0
+                );
+
+                $exdata['packages'][$package_id]['brcode'] = isset($package_post['brcode']) ? $package_post['brcode'] : '';
+                $exdata['packages'][$package_id]['pack'] = isset($package_post['pack']) ? $package_post['pack'] : '';
+
+                if ($default_size['cdek_default_data']['use']) {
+                    switch ($default_size['cdek_default_data']['work_mode']) {
+                        case 'all':
+                            $exdata['packages'][$package_id]['size_a'] = isset($package_post['size_a']) ? $package_post['size_a'] : $default_size['cdek_default_data']['size_a'];
+                            $exdata['packages'][$package_id]['size_b'] = isset($package_post['size_b']) ? $package_post['size_b'] : $default_size['cdek_default_data']['size_b'];
+                            $exdata['packages'][$package_id]['size_c'] = isset($package_post['size_c']) ? $package_post['size_c'] : $default_size['cdek_default_data']['size_c'];
+                            $weight = isset($package_post['weight']) ? $package_post['weight'] : $default_size['cdek_default_data']['weight'] * 1000;
+                            break;
+
+                        case 'optional':
+
+                            if (isset($package_post['size_a'])) {
+                                $exdata['packages'][$package_id]['size_a'] = $package_post['size_a'];
+                            } elseif ((int)$order_product['length'] != 0) {
+                                $exdata['packages'][$package_id]['size_a'] = (int)$order_product['length'];
+                            } else {
+                                $exdata['packages'][$package_id]['size_a'] = $default_size['cdek_default_data']['size_a'];
+                            }
+
+                            if (isset($package_post['size_b'])) {
+                                $exdata['packages'][$package_id]['size_b'] = $package_post['size_b'];
+                            } elseif ((int)$order_product['width'] != 0) {
+                                $exdata['packages'][$package_id]['size_b'] = (int)$order_product['width'];
+                            } else {
+                                $exdata['packages'][$package_id]['size_b'] = $default_size['cdek_default_data']['size_b'];
+                            }
+
+                            if (isset($package_post['size_c'])) {
+                                $exdata['packages'][$package_id]['size_c'] = $package_post['size_c'];
+                            } elseif ((int)$order_product['height'] != 0) {
+                                $exdata['packages'][$package_id]['size_c'] = (int)$order_product['height'];
+                            } else {
+                                $exdata['packages'][$package_id]['size_c'] = $default_size['cdek_default_data']['size_c'];
+                            }
+
+                            if (isset($package_post['weight'])) {
+                                $weight = $package_post['weight'];
+                            } elseif (isset($order_product['weight'])) {
+                                if ($order_product['weight_class_id'] != $this->setting['weight_class_id']) {
+                                    $weight = $this->weight->convert($order_product['weight'], $order_product['weight_class_id'], $this->setting['weight_class_id']);
+                                } else {
+                                    $weight = $order_product['weight'];
+                                }
+                            } else {
+                                $weight = $default_size['cdek_default_data']['weight'];
+                            }
+
+                            break;
+                    }
+                } else {
+
+                    if ((int)$order_product['length'] != 0 && !isset($package_post['size_a'])) {
+                        $exdata['packages'][$package_id]['size_a'] = (int)$order_product['length'];
+                    } else {
+                        $exdata['packages'][$package_id]['size_a'] = isset($package_post['size_a']) ? $package_post['size_a'] : '';
+                    }
+
+                    if ((int)$order_product['width'] != 0 && !isset($package_post['size_b'])) {
+                        $exdata['packages'][$package_id]['size_b'] = (int)$order_product['width'];
+                    } else {
+                        $exdata['packages'][$package_id]['size_b'] = isset($package_post['size_b']) ? $package_post['size_b'] : '';
+                    }
+
+                    if ((int)$order_product['height'] != 0 && !isset($package_post['size_c'])) {
+                        $exdata['packages'][$package_id]['size_c'] = (int)$order_product['height'];
+                    } else {
+                        $exdata['packages'][$package_id]['size_c'] = isset($package_post['size_c']) ? $package_post['size_c'] : '';
+                    }
+
+                    if (isset($order_product['weight'])) {
+
+                        if ($order_product['weight_class_id'] != $this->setting['weight_class_id']) {
+                            $weight = $this->weight->convert($order_product['weight'], $order_product['weight_class_id'], $this->setting['weight_class_id']);
+                        } else {
+                            $weight = $order_product['weight'];
+                        }
+                    } else {
+                        $weight = 0;
+                    }
+                }
+
+                $package_item_post = isset($package_post['item'][$package_id]) ? $package_post['item'][$package_id] : array();
+
+                $product_options = $this->model_extension_module_cdek_integrator->getOrderProductOptions($order_product['order_product_id']);
+
+                $product_name = $order_product['name'];
+
+                $option_values = array();
+
+                foreach ($product_options as $product_option) {
+
+                    if (!empty($product_option['weight'])) {
+
+                        if ($order_product['weight_class_id'] != $this->setting['weight_class_id']) {
+                            $option_weight = $this->weight->convert($product_option['weight'], $order_product['weight_class_id'], $this->setting['weight_class_id']);
+                        } else {
+                            $option_weight = $product_option['weight'];
+                        }
+
+                        if ($product_option['weight_prefix'] == '+') {
+                            $weight += $option_weight;
+                        } else {
+                            $weight -= $option_weight;
+                        }
+
+                        if ($weight < 0) {
+                            $weight = 0;
+                        }
+                    }
+
+                    if ($product_option['type'] != 'file') {
+                        $option_values[] = $product_option['name'] . ': ' . $product_option['value'];
+                    }
+                }
+
+                if (!empty($option_values)) {
+                    $product_name .= '(' . implode(', ', $option_values) . ')';
+                }
+
+                $total_weight = $weight * $order_product['quantity'];
+
+                $item_data = array(
+                    'order_product_id'    => $order_product['order_product_id'],
+                    'product_id'        => $order_product['product_id'],
+                    'name'                => $product_name,
+                    'weight'            => isset($package_item_post['weight']) ? $package_item_post['weight'] : $weight,
+                    'option'            => $this->model_sale_order->getOrderOptions($order_id, $order_product['order_product_id']),
+                    'quantity'            => isset($package_item_post['amount']) ? $package_item_post['amount'] : $order_product['quantity'],
+                    'price'                => isset($package_item_post['cost']) ? $package_item_post['cost'] : $order_product['price'],
+                    'payment'            => isset($package_item_post['payment']) ? $package_item_post['payment'] : (isset($order_product['payment']) ? $order_product['payment'] : $order_product['price']),
+                    'payment_vat_rate'    => isset($package_item_post['payment_vat_rate']) ? $package_item_post['payment_vat_rate'] : (isset($order_product['payment_vat_rate']) ? $order_product['payment_vat_rate'] : 0),
+                    'payment_vat_sum'    => isset($package_item_post['payment_vat_sum']) ? $package_item_post['payment_vat_sum'] : (isset($order_product['payment_vat_sum']) ? $order_product['payment_vat_sum'] : 0),
+                    'total'                => $order_product['total'],
+                    'tax'                => $order_product['tax']
+                );
+
+                $item_data['total'] = $this->currency->format(((int)$item_data * $item_data['price']), $order_info['currency_code'], $order_info['currency_value']) . ' / ' . $this->currency->format(((int)$item_data * $item_data['payment']), $order_info['currency_code'], $order_info['currency_value']);
+
+                $exdata['packages'][$package_id]['item'][] = $item_data;
+
+                $exdata['packages'][$package_id]['weight'] = $total_weight;
+
+                $exdata['packages'][$package_id]['additional_weight'] = $this->getPackingWeight($exdata['packages'][$package_id]['weight']);
+            }
+
+            if (isset($post_data['courier'])) {
+                $exdata['courier'] = $post_data['courier'];
+            } else {
+                $exdata['courier'] = array(
+                    'city_id'    => $this->setting['city_id'],
+                    'city_name'    => $this->setting['city_name'],
+                    'send_phone'    => $this->config->get('config_telephone'),
+                    'sender_name'    => $this->config->get('config_owner')
+                );
+            }
+
+            if (!empty($post_data)) {
+
+                foreach (array('city_id', 'city_name', 'tariff_id', 'mode_id', 'recipient_city_id', 'recipient_city_name', 'delivery_recipient_cost', 'delivery_recipient_vat_rate', 'delivery_recipient_vat_sum', 'seller_name', 'cdek_comment', 'package', 'schedule', 'add_service') as $item) {
+
+                    if (isset($post_data[$item])) {
+                        $exdata[$item] = $post_data[$item];
+                    }
+                }
+
+                foreach (array('street', 'house', 'flat', 'pvz_code') as $item) {
+
+                    if (isset($post_data['address'][$item])) {
+                        $exdata['address'][$item] = $post_data['address'][$item];
+                    }
+                }
+
+                if (!empty($exdata['recipient_city_id'])) {
+
+                    $pvz_list = $this->getPVZ($exdata['recipient_city_id']);
+
+                    if (isset($pvz_list['List'])) {
+                        $exdata['pvz_list'] = $pvz_list['List'];
+                    }
+                }
+            } elseif ($order_info['shipping_city'] != '') {
+                if (!empty($this->setting['delivery_recipient_cost']) || (int)$this->setting['delivery_recipient_cost'] !== 0) {
+                    $exdata['delivery_recipient_cost'] = $this->setting['delivery_recipient_cost'];
+                } elseif ($additional_cost) {
+                    $exdata['delivery_recipient_cost'] = $additional_cost;
+                }
+
+                if (!empty($this->setting['seller_name'])) {
+                    $exdata['seller_name'] = $this->setting['seller_name'];
+                }
+
+                if (!empty($this->setting['add_service'])) {
+                    $exdata['add_service'] = array_flip($this->setting['add_service']);
+                }
+
+                $city_info = $this->getCity($order_info['shipping_city'], $order_info['shipping_country_id'], $order_info['shipping_zone_id']);
+
+                if (isset($city_info['id'])) {
+
+                    $exdata += array(
+                        'recipient_city_id'        => $city_info['id'],
+                        'recipient_city_name'    => $city_info['name']
+                    );
+
+                    $pvz_list = $this->getPVZ($city_info['id']);
+
+                    if (!empty($pvz_list['List'])) {
+                        $exdata['pvz_list'] = $pvz_list['List'];
+                    }
+                }
+
+                if ($order_to_sdek['cityId']) {
+                    $city_info = $this->model_extension_module_cdek_integrator->getCityById((int)$order_to_sdek['cityId']);
+                    $exdata += array(
+                        'recipient_city_id'        => $order_to_sdek['cityId'],
+                        'recipient_city_name'    => $city_info['name']
+                    );
+
+                    $pvz_list = $this->getPVZ($order_to_sdek['cityId']);
+
+                    if (!empty($pvz_list['List'])) {
+                        $exdata['pvz_list'] = $pvz_list['List'];
+                    }
+                }
+
+                if (isset($order_info['shipping_code'])) {
+
+                    $parts = explode('.', $order_info['shipping_code']);
+
+                    if ($parts[0] == 'cdek' && !empty($parts[1])) {
+
+                        $tariff_parts = explode('_', $parts[1]);
+
+                        if (count($tariff_parts) == 3) {
+
+                            list(, $tariff_id, $pvz_code) = $tariff_parts;
+
+                            $tariff_info = $this->getInfo()->getTariffInfo($tariff_id);
+                            if ($order_to_sdek['pvz_code']) {
+                                $pvz_code = $order_to_sdek['pvz_code'];
+                            }
+                            if ($tariff_info) {
+
+                                $exdata += array(
+                                    'tariff_id' => $tariff_id,
+                                    'mode_id'    => $tariff_info['mode_id'],
+                                    'address'    => array(
+                                        'pvz_code'    => $pvz_code
+                                    )
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!empty($exdata['pvz_list']) && !empty($exdata['address']['pvz_code'])) {
+
+                foreach ($pvz_list['List'] as $pvz_info) {
+
+                    if ($pvz_info['Code'] == $exdata['address']['pvz_code']) {
+
+                        $exdata['pvz_info'] = $pvz_info;
+
+                        break;
+                    }
+                }
+            }
+
+            $rdata['cdek_orders'] = $exdata + $order_info;
+        }
+
+        $rdata['sell_address'] = $this->config->get('config_address');
+        $rdata['tariff_list'] = $this->getInfo()->getTariffList();
+        $rdata['vat_rate_list'] = $this->getInfo()->getVatRates();
+        $rdata['add_cervices'] = $this->getInfo()->getAddServices();
+        $rdata['ownership_forms'] = $this->getInfo()->getOwnershipForm();
+
+        $rdata['date'] = $this->getDateExecuted('Y-m-d');
+
+        $rdata['number'] = uniqid();
+
+        $rdata['login'] = $this->setting['account'];
+
+        $default_timezone = date_default_timezone_get();
+        date_default_timezone_set('UTC');
+
+        $rdata['pass'] = $this->setting['secure_password'];
+
+        date_default_timezone_set($default_timezone);
+
+        $rdata['header'] = $this->load->controller('common/header');
+        $rdata['column_left'] = $this->load->controller('common/column_left');
+        $rdata['footer'] = $this->load->controller('common/footer');
+
+        $this->response->setOutput($this->templateOutput('order_form', $rdata));
+    }
+
+    public function option()
+    {
+
+        if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validateOption()) {
+
+            $this->load->model('setting/setting');
+            $this->model_setting_setting->editSetting('cdek_integrator_setting', $this->request->post);
+
+            $this->session->data['success'] = $this->language->get('text_success');
+
+            if (isset($this->request->get['redirect'])) {
+                $redirect = $this->url->link('extension/module/cdek_integrator/option', 'user_token=' . $this->session->data['user_token'], 'SSL');
+            } else {
+                $redirect = $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL');
+            }
+
+            $this->response->redirect($redirect);
+        }
+
+        $this->load->model('localisation/order_status');
+        $this->load->model('localisation/weight_class');
+        $this->load->model('localisation/length_class');
+
+        $this->document->setTitle($this->language->get('heading_title_option'));
+
+        $rdata['heading_title'] = $this->language->get('heading_title_option');
+
+        $rdata['text_city_from'] = $this->language->get('text_city_from');
+        $rdata['text_tokens'] = $this->language->get('text_tokens');
+        $rdata['text_token_dispatch_number'] = $this->language->get('text_token_dispatch_number');
+        $rdata['text_token_order_id'] = $this->language->get('text_token_order_id');
+        $rdata['text_help_status_rule'] = $this->language->get('text_help_status_rule');
+        $rdata['text_none'] = $this->language->get('text_none');
+
+        $rdata['entry_city'] = $this->language->get('entry_city');
+        $rdata['entry_copy_count'] = $this->language->get('entry_copy_count');
+        $rdata['entry_weight_default'] = $this->language->get('entry_weight_default');
+        $rdata['entry_default_data'] = $this->language->get('entry_default_data');
+        $rdata['entry_data_work_mode_default'] = $this->language->get('entry_data_work_mode_default');
+        $rdata['entry_weight_class_id'] = $this->language->get('entry_weight_class_id');
+        $rdata['entry_length_class_id'] = $this->language->get('entry_length_class_id');
+        $rdata['entry_account'] = $this->language->get('entry_account');
+        $rdata['entry_secure_password'] = $this->language->get('entry_secure_password');
+        $rdata['entry_new_order_status_id'] = $this->language->get('entry_new_order_status_id');
+        $rdata['entry_shipping_methods'] = $this->language->get('entry_shipping_methods');
+        $rdata['entry_payment_methods'] = $this->language->get('entry_payment_methods');
+        $rdata['entry_new_order'] = $this->language->get('entry_new_order');
+        $rdata['entry_city_default'] = $this->language->get('entry_city_default');
+        $rdata['entry_packing_min_weight'] = $this->language->get('entry_packing_min_weight');
+        $rdata['entry_packing_additional_weight'] = $this->language->get('entry_packing_additional_weight');
+        $rdata['entry_cod_default'] = $this->language->get('entry_cod_default');
+        $rdata['entry_delivery_recipient_cost'] = $this->language->get('entry_delivery_recipient_cost');
+        $rdata['entry_seller_name'] = $this->language->get('entry_seller_name');
+        $rdata['entry_add_service'] = $this->language->get('entry_add_service');
+        $rdata['entry_replace_items'] = $this->language->get('entry_replace_items');
+        $rdata['entry_replace_item_name'] = $this->language->get('entry_replace_item_name');
+        $rdata['entry_replace_item_cost'] = $this->language->get('entry_replace_item_cost');
+        $rdata['entry_replace_item_payment'] = $this->language->get('entry_replace_item_payment');
+        $rdata['entry_replace_item_amount'] = $this->language->get('entry_replace_item_amount');
+        $rdata['entry_use_cron'] = $this->language->get('entry_use_cron');
+        $rdata['entry_currency'] = $this->language->get('entry_currency');
+        $rdata['entry_currency_agreement'] = $this->language->get('entry_currency_agreement');
+
+        $rdata['text_testing_api_keys'] = sprintf($this->language->get('text_testing_api_keys'), cdek_integrator::TEST_ACCOUNT, cdek_integrator::TEST_SECURE_PASSWORD);
+
+        $rdata['column_token'] = $this->language->get('column_token');
+        $rdata['column_value'] = $this->language->get('column_value');
+        $rdata['column_cdek_status'] = $this->language->get('column_cdek_status');
+        $rdata['column_new_status'] = $this->language->get('column_new_status');
+        $rdata['column_notify'] = $this->language->get('column_notify');
+        $rdata['column_comment'] = $this->language->get('column_comment');
+        $rdata['column_action'] = $this->language->get('column_action');
+
+        $rdata['tab_data'] = $this->language->get('tab_data');
+        $rdata['tab_auth'] = $this->language->get('tab_auth');
+        $rdata['tab_order'] = $this->language->get('tab_order');
+        $rdata['tab_package'] = $this->language->get('tab_additional_weight');
+        $rdata['tab_status'] = $this->language->get('tab_status');
+        $rdata['tab_currency'] = $this->language->get('tab_currency');
+        $rdata['tab_additional'] = $this->language->get('tab_additional');
+
+        $rdata['button_save'] = $this->language->get('button_save');
+        $rdata['button_apply'] = $this->language->get('button_apply');
+        $rdata['button_cancel'] = $this->language->get('button_cancel');
+
+        $rdata['boolean_variables'] = array($this->language->get('text_no'), $this->language->get('text_yes'));
+
+        $rdata['default_work_mode'] = array(
+            'all'        => $this->language->get('text_mode_product_all'),
+            'optional'    => $this->language->get('text_mode_product_optional')
+        );
+
+        $rdata['additional_weight_mode'] = array(
+            'fixed'            => $this->language->get('text_weight_fixed'),
+            'all_percent'    => $this->language->get('text_weight_all')
+        );
+
+        $rdata['currency_list'] = $this->getInfo()->getCurrencyList();
+
+        if (isset($this->error['warning'])) {
+            $rdata['error_warning'] = $this->error['warning'];
+        } else {
+            $rdata['error_warning'] = '';
+        }
+
+        $rdata['error'] = $this->error;
+
+        if (isset($this->session->data['success'])) {
+            $rdata['success'] = $this->session->data['success'];
+
+            unset($this->session->data['success']);
+        } else {
+            $rdata['success'] = '';
+        }
+
+        $rdata['breadcrumbs'] = array();
+
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('text_home'),
+            'href'      => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'], 'SSL'),
+        );
+
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('text_extension'),
+            'href'      => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
+        );
+
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('heading_title_bk_main'),
+            'href'      => $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'),
+        );
+
+        if (isset($this->request->post['cdek_integrator_setting'])) {
+            $rdata['setting'] = $this->request->post['cdek_integrator_setting'];
+        } else {
+            $rdata['setting'] = $this->setting;
+        }
+
+        if (!isset($rdata['setting']['cod'])) {
+            $rdata['setting']['cod'] = 1;
+        }
+
+        if (!empty($this->setting['city_id'])) {
+            $pvz_list_sell = $this->getPVZ($this->setting['city_id']);
+        }
+
+        if (!empty($pvz_list_sell['List'])) {
+            $rdata['pvz_list_sell'] = $pvz_list_sell['List'];
+        } else {
+            $rdata['pvz_list_sell'] = [];
+        }
+
+        $rdata['action'] = $this->url->link('extension/module/cdek_integrator/option', 'user_token=' . $this->session->data['user_token'], 'SSL');
+        $rdata['update_city'] = $this->url->link('extension/module/cdek_integrator/updateCities', 'user_token=' . $this->session->data['user_token'] . '&redirect=extension/module/cdek_integrator/option', true);
+        $rdata['cancel'] = $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL');
+
+        $rdata['order_statuses'] = $this->model_localisation_order_status->getOrderStatuses();
+        $rdata['cdek_statuses'] = $this->getInfo()->getOrderStatuses();
+
+        $rdata['show_filter'] = version_compare(VERSION, '1.5.1.3', '>') || (strpos(VERSION, '1.5.1') !== FALSE);
+
+        $rdata['payment_methods'] = $this->getPaymentMethods();
+        $rdata['shipping_methods'] = $this->getShippingMethods();
+        $rdata['weight_classes'] = $this->model_localisation_weight_class->getWeightClasses();
+        $rdata['length_classes'] = $this->model_localisation_length_class->getLengthClasses();
+        $rdata['add_cervices'] = $this->getInfo()->getAddServices();
+
+        $rdata['header'] = $this->load->controller('common/header');
+        $rdata['column_left'] = $this->load->controller('common/column_left');
+        $rdata['footer'] = $this->load->controller('common/footer');
+
+        $rdata['token'] = $this->request->get['user_token'];
+
+        $this->response->setOutput($this->templateOutput('option', $rdata));
+    }
+
+    public function dispatch()
+    {
+
+        if ($this->new_application) {
+            $this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+        }
+
+        $this->document->setTitle($this->language->get('heading_title_dispatch'));
+
+        $this->load->model('extension/module/cdek_integrator');
+
+        $this->dispatchList();
+    }
+
+    private function dispatchList()
+    {
+
+        if ($this->new_application) {
+            $this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+        }
+
+        if (isset($this->request->get['filter_order_id'])) {
+            $filter_order_id = $this->request->get['filter_order_id'];
+        } else {
+            $filter_order_id = NULL;
+        }
+
+        if (isset($this->request->get['filter_dispatch_number'])) {
+            $filter_dispatch_number = $this->request->get['filter_dispatch_number'];
+        } else {
+            $filter_dispatch_number = NULL;
+        }
+
+        if (isset($this->request->get['filter_act_number'])) {
+            $filter_act_number = $this->request->get['filter_act_number'];
+        } else {
+            $filter_act_number = NULL;
+        }
+
+        if (isset($this->request->get['filter_date'])) {
+            $filter_date = $this->request->get['filter_date'];
+        } else {
+            $filter_date = NULL;
+        }
+
+        if (isset($this->request->get['filter_city_from'])) {
+            $filter_city_from = $this->request->get['filter_city_from'];
+        } else {
+            $filter_city_from = NULL;
+        }
+
+        if (isset($this->request->get['filter_city_to'])) {
+            $filter_city_to = $this->request->get['filter_city_to'];
+        } else {
+            $filter_city_to = NULL;
+        }
+
+        if (isset($this->request->get['filter_status_id'])) {
+            $filter_status_id = $this->request->get['filter_status_id'];
+        } else {
+            $filter_status_id = NULL;
+        }
+
+        if (isset($this->request->get['filter_total'])) {
+            $filter_total = $this->request->get['filter_total'];
+        } else {
+            $filter_total = NULL;
+        }
+
+        if (isset($this->request->get['sort'])) {
+            $sort = $this->request->get['sort'];
+        } else {
+            $sort = 'd.date';
+        }
+
+        if (isset($this->request->get['order'])) {
+            $order = $this->request->get['order'];
+        } else {
+            $order = 'DESC';
+        }
+
+        if (isset($this->request->get['page'])) {
+            $page = $this->request->get['page'];
+        } else {
+            $page = 1;
+        }
+
+        if (isset($this->request->get['limit']) && in_array($this->request->get['limit'], $this->limits)) {
+            $limit = $this->request->get['limit'];
+        } else {
+            $limit = reset($this->limits);
+        }
+
+        $url = '';
+
+        if (isset($this->request->get['filter_order_id'])) {
+            $url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
+        }
+
+        if (isset($this->request->get['filter_dispatch_number'])) {
+            $url .= '&filter_dispatch_number=' . $this->request->get['filter_dispatch_number'];
+        }
+
+        if (isset($this->request->get['filter_act_number'])) {
+            $url .= '&filter_act_number=' . $this->request->get['filter_act_number'];
+        }
+
+        if (isset($this->request->get['filter_date'])) {
+            $url .= '&filter_date=' . $this->request->get['filter_date'];
+        }
+
+        if (isset($this->request->get['filter_city_from'])) {
+            $url .= '&filter_city_from=' . $this->request->get['filter_city_from'];
+        }
+
+        if (isset($this->request->get['filter_city_to'])) {
+            $url .= '&filter_city_to=' . $this->request->get['filter_city_to'];
+        }
+
+        if (isset($this->request->get['filter_status_id'])) {
+            $url .= '&filter_status_id=' . $this->request->get['filter_status_id'];
+        }
+
+        if (isset($this->request->get['filter_total'])) {
+            $url .= '&filter_total=' . $this->request->get['filter_total'];
+        }
+
+        if (isset($this->request->get['sort'])) {
+            $url .= '&sort=' . $this->request->get['sort'];
+        }
+
+        if (isset($this->request->get['order'])) {
+            $url .= '&order=' . $this->request->get['order'];
+        }
+
+        if (isset($this->request->get['page'])) {
+            $url .= '&page=' . $this->request->get['page'];
+        }
+
+        if (isset($this->request->get['limit'])) {
+            $url .= '&limit=' . $this->request->get['limit'];
+        }
+
+        $rdata['breadcrumbs'] = array();
+
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('text_home'),
+            'href'      => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'),
+        );
+
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('text_extension'),
+            'href'      => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
+        );
+
+        $rdata['breadcrumbs'][] = array(
+            'text'      => $this->language->get('heading_title_bk_main'),
+            'href'      => $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'),
+        );
+
+        $rdata['cancel'] = $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL');
+
+        $rdata['dispatches'] = array();
+
+        $exdata = array(
+            'filter_order_id'            => $filter_order_id,
+            'filter_dispatch_number'    => $filter_dispatch_number,
+            'filter_act_number'            => $filter_act_number,
+            'filter_date'                => $filter_date,
+            'filter_city_from'            => $filter_city_from,
+            'filter_city_to'            => $filter_city_to,
+            'filter_status_id'            => $filter_status_id,
+            'filter_total'                => $filter_total,
+            'sort'                        => $sort,
+            'order'                        => $order,
+            'start'                        => ($page - 1) * $limit,
+            'limit'                        => $limit
+        );
+
+        $results = $this->model_extension_module_cdek_integrator->getDispatchList($exdata);
+
+        $order_total = $this->model_extension_module_cdek_integrator->getDispatchTotal($exdata);
+
+        foreach ($results as $dispatch_info) {
+
+            $action = array();
+
+            $action[] = array(
+                'text' => $this->language->get('text_view'),
+                'href' => $this->url->link('extension/module/cdek_integrator/dispatchView', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $dispatch_info['order_id'] . $url, 'SSL')
+            );
+
+            $action[] = array(
+                'text'    => $this->language->get('text_sync'),
+                'href'    => $this->url->link('extension/module/cdek_integrator/dispatchSync', 'user_token=' . $this->session->data['user_token'] . '&target=list&order_id=' . $dispatch_info['order_id'] . $url, 'SSL'),
+                'class'    => 'js sync'
+            );
+
+            if ($dispatch_info['status_id'] == "ACCEPTED" || $dispatch_info['status_id'] == 'INVALID') {
+
+                $action[] = array(
+                    'text' => $this->language->get('text_delete'),
+                    'href' => $this->url->link('extension/module/cdek_integrator/dispatchDelete', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $dispatch_info['order_id'] . $url, 'SSL'),
+                    'class'    => 'delete'
+                );
+            }
+
+            if (is_null($dispatch_info['act_number'])) {
+                $dispatch_info['act_number'] = FALSE;
+            }
+
+            $rdata['dispatches'][] = array(
+                'order_id'                => $dispatch_info['order_id'],
+                'dispatch_number'        => $dispatch_info['dispatch_number'],
+                'act_number'            => $dispatch_info['act_number'],
+                'cdek_number'           => $dispatch_info['cdek_number'],
+                'date'                    => $this->formatDate($dispatch_info['date']),
+                'city_name'                => $dispatch_info['city_name'],
+                'recipient_city_name'    => $dispatch_info['recipient_city_name'],
+                'status'                => $dispatch_info['status_description'],
+                'status_date'            => $this->formatDate($dispatch_info['status_date']),
+                'cost'                    => (float)$dispatch_info['delivery_cost'] ? $this->currency->format($dispatch_info['delivery_cost'], $this->config->get('config_currency')) : '',
+                'action'                => $action
+            );
+        }
+
+        $rdata['heading_title'] = $this->language->get('heading_title_dispatch');
+
+        $rdata['text_no_results'] = $this->language->get('text_no_results');
+        $rdata['text_missing'] = $this->language->get('text_missing');
+
+        /*$rdata['column_order_id'] = $this->language->get('column_order_id');
 		$rdata['column_customer'] = $this->language->get('column_customer');*/
-		$rdata['column_dispatch_number'] = $this->language->get('column_dispatch_number');
-		$rdata['column_dispatch_total_orders'] = $this->language->get('column_dispatch_total_orders');
-		$rdata['column_dispatch_date'] = $this->language->get('column_dispatch_date');
-		$rdata['column_action'] = $this->language->get('column_action');
-
-		$rdata['button_cancel'] = $this->language->get('button_cancel');
-		$rdata['button_filter'] = $this->language->get('button_filter');
-
-		if (isset($this->session->data['warning'])) {
-			$rdata['error_warning'] = $this->session->data['warning'];
-
-			unset($this->session->data['warning']);
-		} elseif (isset($this->error['warning'])) {
-			$rdata['error_warning'] = $this->error['warning'];
-		} else {
-			$rdata['error_warning'] = '';
-		}
-
-		$rdata['token'] = $this->session->data['user_token'];
-
-		if (isset($this->session->data['success'])) {
-			$rdata['success'] = $this->session->data['success'];
-
-			unset($this->session->data['success']);
-		} else {
-			$rdata['success'] = '';
-		}
-
-		$url = '';
-
-		if (isset($this->request->get['filter_order_id'])) {
-			$url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
-		}
-
-		if (isset($this->request->get['filter_dispatch_number'])) {
-			$url .= '&filter_dispatch_number=' . $this->request->get['filter_dispatch_number'];
-		}
-
-		if (isset($this->request->get['filter_act_number'])) {
-			$url .= '&filter_act_number=' . $this->request->get['filter_act_number'];
-		}
-
-		if (isset($this->request->get['filter_date'])) {
-			$url .= '&filter_date=' . $this->request->get['filter_date'];
-		}
-
-		if (isset($this->request->get['filter_city_from'])) {
-			$url .= '&filter_city_from=' . $this->request->get['filter_city_from'];
-		}
-
-		if (isset($this->request->get['filter_city_to'])) {
-			$url .= '&filter_city_to=' . $this->request->get['filter_city_to'];
-		}
-
-		if (isset($this->request->get['filter_status_id'])) {
-			$url .= '&filter_status_id=' . $this->request->get['filter_status_id'];
-		}
-
-		if (isset($this->request->get['filter_total'])) {
-			$url .= '&filter_total=' . $this->request->get['filter_total'];
-		}
-
-		if ($order == 'ASC') {
-			$url .= '&order=DESC';
-		} else {
-			$url .= '&order=ASC';
-		}
-
-		if (isset($this->request->get['page'])) {
-			$url .= '&page=' . $this->request->get['page'];
-		}
-
-		if (isset($this->request->get['limit'])) {
-			$url .= '&limit=' . $this->request->get['limit'];
-		}
-
-		$rdata['sort_order_id'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.order_id' . $url, 'SSL');
-		$rdata['sort_dispatch_number'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=d.dispatch_number' . $url, 'SSL');
-		$rdata['sort_act_number'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.act_number' . $url, 'SSL');
-		$rdata['sort_date'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=d.date' . $url, 'SSL');
-		$rdata['sort_city_from'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.city_name' . $url, 'SSL');
-		$rdata['sort_city_to'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.recipient_city_name' . $url, 'SSL');
-		$rdata['sort_status'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.status_id' . $url, 'SSL');
-		$rdata['sort_total'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.delivery_cost' . $url, 'SSL');
+        $rdata['column_dispatch_number'] = $this->language->get('column_dispatch_number');
+        $rdata['column_dispatch_total_orders'] = $this->language->get('column_dispatch_total_orders');
+        $rdata['column_dispatch_date'] = $this->language->get('column_dispatch_date');
+        $rdata['column_action'] = $this->language->get('column_action');
+
+        $rdata['button_cancel'] = $this->language->get('button_cancel');
+        $rdata['button_filter'] = $this->language->get('button_filter');
+
+        if (isset($this->session->data['warning'])) {
+            $rdata['error_warning'] = $this->session->data['warning'];
+
+            unset($this->session->data['warning']);
+        } elseif (isset($this->error['warning'])) {
+            $rdata['error_warning'] = $this->error['warning'];
+        } else {
+            $rdata['error_warning'] = '';
+        }
+
+        $rdata['token'] = $this->session->data['user_token'];
+
+        if (isset($this->session->data['success'])) {
+            $rdata['success'] = $this->session->data['success'];
+
+            unset($this->session->data['success']);
+        } else {
+            $rdata['success'] = '';
+        }
+
+        $url = '';
+
+        if (isset($this->request->get['filter_order_id'])) {
+            $url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
+        }
+
+        if (isset($this->request->get['filter_dispatch_number'])) {
+            $url .= '&filter_dispatch_number=' . $this->request->get['filter_dispatch_number'];
+        }
+
+        if (isset($this->request->get['filter_act_number'])) {
+            $url .= '&filter_act_number=' . $this->request->get['filter_act_number'];
+        }
+
+        if (isset($this->request->get['filter_date'])) {
+            $url .= '&filter_date=' . $this->request->get['filter_date'];
+        }
+
+        if (isset($this->request->get['filter_city_from'])) {
+            $url .= '&filter_city_from=' . $this->request->get['filter_city_from'];
+        }
+
+        if (isset($this->request->get['filter_city_to'])) {
+            $url .= '&filter_city_to=' . $this->request->get['filter_city_to'];
+        }
+
+        if (isset($this->request->get['filter_status_id'])) {
+            $url .= '&filter_status_id=' . $this->request->get['filter_status_id'];
+        }
+
+        if (isset($this->request->get['filter_total'])) {
+            $url .= '&filter_total=' . $this->request->get['filter_total'];
+        }
+
+        if ($order == 'ASC') {
+            $url .= '&order=DESC';
+        } else {
+            $url .= '&order=ASC';
+        }
+
+        if (isset($this->request->get['page'])) {
+            $url .= '&page=' . $this->request->get['page'];
+        }
+
+        if (isset($this->request->get['limit'])) {
+            $url .= '&limit=' . $this->request->get['limit'];
+        }
+
+        $rdata['sort_order_id'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.order_id' . $url, 'SSL');
+        $rdata['sort_dispatch_number'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=d.dispatch_number' . $url, 'SSL');
+        $rdata['sort_act_number'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.act_number' . $url, 'SSL');
+        $rdata['sort_date'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=d.date' . $url, 'SSL');
+        $rdata['sort_city_from'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.city_name' . $url, 'SSL');
+        $rdata['sort_city_to'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.recipient_city_name' . $url, 'SSL');
+        $rdata['sort_status'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.status_id' . $url, 'SSL');
+        $rdata['sort_total'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&sort=o.delivery_cost' . $url, 'SSL');
 
-		$url = '';
-
-		if (isset($this->request->get['filter_order_id'])) {
-			$url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
-		}
-
-		if (isset($this->request->get['filter_dispatch_number'])) {
-			$url .= '&filter_dispatch_number=' . $this->request->get['filter_dispatch_number'];
-		}
-
-		if (isset($this->request->get['filter_act_number'])) {
-			$url .= '&filter_act_number=' . $this->request->get['filter_act_number'];
-		}
-
-		if (isset($this->request->get['filter_date'])) {
-			$url .= '&filter_date=' . $this->request->get['filter_date'];
-		}
-
-		if (isset($this->request->get['filter_city_from'])) {
-			$url .= '&filter_city_from=' . $this->request->get['filter_city_from'];
-		}
-
-		if (isset($this->request->get['filter_city_to'])) {
-			$url .= '&filter_city_to=' . $this->request->get['filter_city_to'];
-		}
-
-		if (isset($this->request->get['filter_status_id'])) {
-			$url .= '&filter_status_id=' . $this->request->get['filter_status_id'];
-		}
+        $url = '';
+
+        if (isset($this->request->get['filter_order_id'])) {
+            $url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
+        }
+
+        if (isset($this->request->get['filter_dispatch_number'])) {
+            $url .= '&filter_dispatch_number=' . $this->request->get['filter_dispatch_number'];
+        }
+
+        if (isset($this->request->get['filter_act_number'])) {
+            $url .= '&filter_act_number=' . $this->request->get['filter_act_number'];
+        }
+
+        if (isset($this->request->get['filter_date'])) {
+            $url .= '&filter_date=' . $this->request->get['filter_date'];
+        }
+
+        if (isset($this->request->get['filter_city_from'])) {
+            $url .= '&filter_city_from=' . $this->request->get['filter_city_from'];
+        }
+
+        if (isset($this->request->get['filter_city_to'])) {
+            $url .= '&filter_city_to=' . $this->request->get['filter_city_to'];
+        }
+
+        if (isset($this->request->get['filter_status_id'])) {
+            $url .= '&filter_status_id=' . $this->request->get['filter_status_id'];
+        }
+
+        if (isset($this->request->get['filter_total'])) {
+            $url .= '&filter_total=' . $this->request->get['filter_total'];
+        }
 
-		if (isset($this->request->get['filter_total'])) {
-			$url .= '&filter_total=' . $this->request->get['filter_total'];
-		}
+        if (isset($this->request->get['sort'])) {
+            $url .= '&sort=' . $this->request->get['sort'];
+        }
+
+        if (isset($this->request->get['order'])) {
+            $url .= '&order=' . $this->request->get['order'];
+        }
 
-		if (isset($this->request->get['sort'])) {
-			$url .= '&sort=' . $this->request->get['sort'];
-		}
+        if (isset($this->request->get['page'])) {
+            $url .= '&page=' . $this->request->get['page'];
+        }
 
-		if (isset($this->request->get['order'])) {
-			$url .= '&order=' . $this->request->get['order'];
-		}
+        foreach ($this->limits as $item) {
+            $rdata['limits'][$item] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&limit=' . $item . $url, 'SSL');
+        }
 
-		if (isset($this->request->get['page'])) {
-			$url .= '&page=' . $this->request->get['page'];
-		}
+        $url = '';
 
-		foreach ($this->limits as $item) {
-			$rdata['limits'][$item] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . '&limit=' . $item . $url, 'SSL');
-		}
+        if (isset($this->request->get['filter_order_id'])) {
+            $url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
+        }
 
-		$url = '';
+        if (isset($this->request->get['filter_dispatch_number'])) {
+            $url .= '&filter_dispatch_number=' . $this->request->get['filter_dispatch_number'];
+        }
 
-		if (isset($this->request->get['filter_order_id'])) {
-			$url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
-		}
+        if (isset($this->request->get['filter_act_number'])) {
+            $url .= '&filter_act_number=' . $this->request->get['filter_act_number'];
+        }
 
-		if (isset($this->request->get['filter_dispatch_number'])) {
-			$url .= '&filter_dispatch_number=' . $this->request->get['filter_dispatch_number'];
-		}
+        if (isset($this->request->get['filter_date'])) {
+            $url .= '&filter_date=' . $this->request->get['filter_date'];
+        }
 
-		if (isset($this->request->get['filter_act_number'])) {
-			$url .= '&filter_act_number=' . $this->request->get['filter_act_number'];
-		}
+        if (isset($this->request->get['filter_city_from'])) {
+            $url .= '&filter_city_from=' . $this->request->get['filter_city_from'];
+        }
 
-		if (isset($this->request->get['filter_date'])) {
-			$url .= '&filter_date=' . $this->request->get['filter_date'];
-		}
+        if (isset($this->request->get['filter_city_to'])) {
+            $url .= '&filter_city_to=' . $this->request->get['filter_city_to'];
+        }
 
-		if (isset($this->request->get['filter_city_from'])) {
-			$url .= '&filter_city_from=' . $this->request->get['filter_city_from'];
-		}
+        if (isset($this->request->get['filter_status_id'])) {
+            $url .= '&filter_status_id=' . $this->request->get['filter_status_id'];
+        }
 
-		if (isset($this->request->get['filter_city_to'])) {
-			$url .= '&filter_city_to=' . $this->request->get['filter_city_to'];
-		}
+        if (isset($this->request->get['filter_total'])) {
+            $url .= '&filter_total=' . $this->request->get['filter_total'];
+        }
 
-		if (isset($this->request->get['filter_status_id'])) {
-			$url .= '&filter_status_id=' . $this->request->get['filter_status_id'];
-		}
+        if (isset($this->request->get['sort'])) {
+            $url .= '&sort=' . $this->request->get['sort'];
+        }
 
-		if (isset($this->request->get['filter_total'])) {
-			$url .= '&filter_total=' . $this->request->get['filter_total'];
-		}
+        if (isset($this->request->get['order'])) {
+            $url .= '&order=' . $this->request->get['order'];
+        }
 
-		if (isset($this->request->get['sort'])) {
-			$url .= '&sort=' . $this->request->get['sort'];
-		}
+        if (isset($this->request->get['limit'])) {
+            $url .= '&limit=' . $this->request->get['limit'];
+        }
 
-		if (isset($this->request->get['order'])) {
-			$url .= '&order=' . $this->request->get['order'];
-		}
+        $rdata['statuses'] = $this->getInfo()->getOrderStatuses();
 
-		if (isset($this->request->get['limit'])) {
-			$url .= '&limit=' . $this->request->get['limit'];
-		}
+        $pagination = new Pagination();
+        $pagination->total = $order_total;
+        $pagination->page = $page;
+        $pagination->limit = $limit;
+        $pagination->text = $this->language->get('text_pagination');
+        $pagination->url = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . $url . '&page={page}', 'SSL');
 
-		$rdata['statuses'] = $this->getInfo()->getOrderStatuses();
+        $rdata['pagination'] = $pagination->render();
 
-		$pagination = new Pagination();
-		$pagination->total = $order_total;
-		$pagination->page = $page;
-		$pagination->limit = $limit;
-		$pagination->text = $this->language->get('text_pagination');
-		$pagination->url = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . $url . '&page={page}', 'SSL');
+        $rdata['filter_order_id'] = $filter_order_id;
+        $rdata['filter_dispatch_number'] = $filter_dispatch_number;
+        $rdata['filter_act_number'] = $filter_act_number;
+        $rdata['filter_date'] = $filter_date;
+        $rdata['filter_city_from'] = $filter_city_from;
+        $rdata['filter_city_to'] = $filter_city_to;
+        $rdata['filter_status_id'] = $filter_status_id;
+        $rdata['filter_total'] = $filter_total;
 
-		$rdata['pagination'] = $pagination->render();
+        $rdata['sort'] = $sort;
+        $rdata['order'] = strtolower($order);
+        $rdata['limit'] = $limit;
 
-		$rdata['filter_order_id'] = $filter_order_id;
-		$rdata['filter_dispatch_number'] = $filter_dispatch_number;
-		$rdata['filter_act_number'] = $filter_act_number;
-		$rdata['filter_date'] = $filter_date;
-		$rdata['filter_city_from'] = $filter_city_from;
-		$rdata['filter_city_to'] = $filter_city_to;
-		$rdata['filter_status_id'] = $filter_status_id;
-		$rdata['filter_total'] = $filter_total;
+        $rdata['header'] = $this->load->controller('common/header');
+        $rdata['column_left'] = $this->load->controller('common/column_left');
+        $rdata['footer'] = $this->load->controller('common/footer');
 
-		$rdata['sort'] = $sort;
-		$rdata['order'] = strtolower($order);
-		$rdata['limit'] = $limit;
+        $this->response->setOutput($this->templateOutput('dispatch_list', $rdata));
+    }
 
-		$rdata['header'] = $this->load->controller('common/header');
-		$rdata['column_left'] = $this->load->controller('common/column_left');
-		$rdata['footer'] = $this->load->controller('common/footer');
+    public function dispatchView()
+    {
 
-		$this->response->setOutput($this->templateOutput('dispatch_list', $rdata));
-	}
+        $this->load->model('extension/module/cdek_integrator');
 
-	public function dispatchView() {
+        if ($this->new_application) {
+            $this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+        } elseif (empty($this->request->get['order_id'])) {
+            $this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+        }
 
-		$this->load->model('extension/module/cdek_integrator');
+        $dispatch_info = $this->model_extension_module_cdek_integrator->getDispatchInfo($this->request->get['order_id']);
 
-		if ($this->new_application) {
-			$this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-		} elseif (empty($this->request->get['order_id'])) {
-			$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-		}
+        if ($dispatch_info) {
 
-		$dispatch_info = $this->model_extension_module_cdek_integrator->getDispatchInfo($this->request->get['order_id']);
+            $this->load->model('localisation/weight_class');
+            $this->load->model('localisation/length_class');
+            $this->load->model('sale/order');
 
-		if ($dispatch_info) {
+            $order_info = $this->model_sale_order->getOrder($dispatch_info['order_id']);
 
-			$this->load->model('localisation/weight_class');
-			$this->load->model('localisation/length_class');
-			$this->load->model('sale/order');
+            $rdata['heading_title'] = 'Детали заказа';
 
-			$order_info = $this->model_sale_order->getOrder($dispatch_info['order_id']);
+            $this->document->setTitle($rdata['heading_title']);
 
-			$rdata['heading_title'] = 'Детали заказа';
+            $rdata['button_sync'] = $this->language->get('button_sync');
+            $rdata['button_print'] = $this->language->get('button_print');
+            $rdata['button_cancel'] = $this->language->get('button_cancel');
 
-			$this->document->setTitle($rdata['heading_title']);
+            $url = '';
 
-			$rdata['button_sync'] = $this->language->get('button_sync');
-			$rdata['button_print'] = $this->language->get('button_print');
-			$rdata['button_cancel'] = $this->language->get('button_cancel');
+            $rdata['breadcrumbs'] = array();
 
-			$url = '';
+            $rdata['breadcrumbs'][] = array(
+                'text'      => $this->language->get('text_home'),
+                'href'      => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'),
+            );
 
-			$rdata['breadcrumbs'] = array();
+            $rdata['breadcrumbs'][] = array(
+                'text'      => $this->language->get('text_extension'),
+                'href'      => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
+            );
 
-			$rdata['breadcrumbs'][] = array(
-				'text'      => $this->language->get('text_home'),
-				'href'      => $this->url->link('common/dashboard', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'),
-			);
+            $rdata['breadcrumbs'][] = array(
+                'text'      => $this->language->get('heading_title_bk_main'),
+                'href'      => $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'),
+            );
 
-			$rdata['breadcrumbs'][] = array(
-	   		'text'      => $this->language->get('text_extension'),
-			'href'      => $this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true)
-   		);
+            $rdata['breadcrumbs'][] = array(
+                'text'      => $this->language->get('heading_title_dispatch'),
+                'href'      => $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'),
+            );
 
-			$rdata['breadcrumbs'][] = array(
-				'text'      => $this->language->get('heading_title_bk_main'),
-				'href'      => $this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'),
-			);
+            if (isset($this->session->data['warning'])) {
+                $rdata['error_warning'][] = $this->session->data['warning'];
 
-			$rdata['breadcrumbs'][] = array(
-				'text'      => $this->language->get('heading_title_dispatch'),
-				'href'      => $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'] . $url, 'SSL'),
-			);
+                unset($this->session->data['warning']);
+            } elseif (isset($this->error['warning'])) {
+                $rdata['error_warning'] = $this->error['warning'];
+            } else {
+                $rdata['error_warning'] = '';
+            }
 
-			if (isset($this->session->data['warning'])) {
-				$rdata['error_warning'][] = $this->session->data['warning'];
+            $rdata['token'] = $this->session->data['user_token'];
 
-				unset($this->session->data['warning']);
-			} elseif (isset($this->error['warning'])) {
-				$rdata['error_warning'] = $this->error['warning'];
-			} else {
-				$rdata['error_warning'] = '';
-			}
+            if (isset($this->session->data['success'])) {
+                $rdata['success'] = $this->session->data['success'];
 
-			$rdata['token'] = $this->session->data['user_token'];
+                unset($this->session->data['success']);
+            } else {
+                $rdata['success'] = '';
+            }
 
-			if (isset($this->session->data['success'])) {
-				$rdata['success'] = $this->session->data['success'];
+            $rdata['sync'] = $this->url->link('extension/module/cdek_integrator/dispatchSync', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL');
+            $rdata['print'] = $this->url->link('extension/module/cdek_integrator/dispatchPrint', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL');
+            $rdata['cancel'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL');
 
-				unset($this->session->data['success']);
-			} else {
-				$rdata['success'] = '';
-			}
+            if (empty($dispatch_info['currency'])) $dispatch_info['currency'] = 'RUB';
 
-			$rdata['sync'] = $this->url->link('extension/module/cdek_integrator/dispatchSync', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL');
-			$rdata['print'] = $this->url->link('extension/module/cdek_integrator/dispatchPrint', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL');
-			$rdata['cancel'] = $this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL');
+            $rdata['dispatch_info'] = $dispatch_info;
 
-			if (empty($dispatch_info['currency'])) $dispatch_info['currency'] = 'RUB';
+            $rdata['date'] = $this->formatDate($dispatch_info['date']);
 
-			$rdata['dispatch_info'] = $dispatch_info;
+            $rdata['last_exchange'] = $this->formatDate($dispatch_info['last_exchange'], TRUE, FALSE);
 
-			$rdata['date'] = $this->formatDate($dispatch_info['date']);
+            if ($this->config->get('config_currency') != 'RUB') {
 
-			$rdata['last_exchange'] = $this->formatDate($dispatch_info['last_exchange'], TRUE, FALSE);
+                $dispatch_info['delivery_cost'] = $this->currency->convert($dispatch_info['delivery_cost'], 'RUB', $this->config->get('config_currency'));
 
-			if ($this->config->get('config_currency') != 'RUB') {
+                if ($dispatch_info['delivery_recipient_cost']) {
+                    $dispatch_info['delivery_recipient_cost'] = $this->currency->convert($dispatch_info['delivery_recipient_cost'], 'RUB', $this->config->get('config_currency'));
+                }
+            }
 
-				$dispatch_info['delivery_cost'] = $this->currency->convert($dispatch_info['delivery_cost'], 'RUB', $this->config->get('config_currency'));
+            if ((float)$dispatch_info['delivery_cost']) {
+                $rdata['delivery_cost'] = $this->currency->format($dispatch_info['delivery_cost'], $this->config->get('config_currency'));
+            } else {
+                $rdata['delivery_cost'] = 0;
+            }
 
-				if ($dispatch_info['delivery_recipient_cost']) {
-					$dispatch_info['delivery_recipient_cost'] = $this->currency->convert($dispatch_info['delivery_recipient_cost'], 'RUB', $this->config->get('config_currency'));
-				}
-			}
+            if ((float)$dispatch_info['delivery_recipient_cost']) {
+                $rdata['delivery_recipient_cost'] = $this->currency->format($dispatch_info['delivery_recipient_cost'], $this->config->get('config_currency'));
+            }
 
-			if ((float)$dispatch_info['delivery_cost']) {
-				$rdata['delivery_cost'] = $this->currency->format($dispatch_info['delivery_cost'], $this->config->get('config_currency'));
-			} else {
-				$rdata['delivery_cost'] = 0;
-			}
+            if ((float)$dispatch_info['cod'] > 0 || (float)$dispatch_info['cod_fact']) {
 
-			if ((float)$dispatch_info['delivery_recipient_cost']) {
-				$rdata['delivery_recipient_cost'] = $this->currency->format($dispatch_info['delivery_recipient_cost'], $this->config->get('config_currency'));
-			}
+                $rdata['currency_cod'] = $this->getInfo()->getCurrency($dispatch_info['currency_cod']);
 
-			if ((float)$dispatch_info['cod'] > 0 || (float)$dispatch_info['cod_fact']) {
+                if ((float)$dispatch_info['cod'] > 0) {
+                    $rdata['cod'] = $this->clearCurrencyFormat($dispatch_info['cod']);
+                }
 
-				$rdata['currency_cod'] = $this->getInfo()->getCurrency($dispatch_info['currency_cod']);
+                if ((float)$dispatch_info['cod_fact'] > 0) {
+                    $rdata['cod_fact'] = $this->clearCurrencyFormat($dispatch_info['cod_fact']);
+                }
+            }
 
-				if ((float)$dispatch_info['cod'] > 0) {
-					$rdata['cod'] = $this->clearCurrencyFormat($dispatch_info['cod']);
-				}
+            if ($dispatch_info['delivery_last_change']) {
+                $rdata['delivery_last_change'] = $this->formatDate($dispatch_info['delivery_last_change']);
+            }
 
-				if ((float)$dispatch_info['cod_fact'] > 0) {
-					$rdata['cod_fact'] = $this->clearCurrencyFormat($dispatch_info['cod_fact']);
-				}
+            if ($dispatch_info['reason_status']) {
+                $rdata['reason_status'] = $dispatch_info['reason_status'];
+            }
 
-			}
+            $rdata['status_history'] = array();
 
-			if ($dispatch_info['delivery_last_change']) {
-				$rdata['delivery_last_change'] = $this->formatDate($dispatch_info['delivery_last_change']);
-			}
+            foreach ($this->model_extension_module_cdek_integrator->getStatusHistory($this->request->get['order_id']) as $status_info) {
 
-			if ($dispatch_info['reason_status']) {
-				$rdata['reason_status'] = $dispatch_info['reason_status'];
-			}
+                $status_description = $this->getInfo()->getOrderStatus($status_info['status_id']);
 
-			$rdata['status_history'] = array();
+                if (!empty($status_description)) {
+                    $description = $status_description['description'];
+                } else {
+                    $description = '';
+                }
 
-			foreach ($this->model_extension_module_cdek_integrator->getStatusHistory($this->request->get['order_id']) as $status_info) {
+                $rdata['status_history'][] = array(
+                    'status_id'        => $status_info['status_id'],
+                    'name'            => $status_info['description'],
+                    'description'    => $description,
+                    'date'            => $this->formatDate($status_info['date']),
+                    'city'            => $status_info['city_name']
+                );
+            }
 
-				$status_description = $this->getInfo()->getOrderStatus($status_info['status_id']);
+            $rdata['status'] = array(
+                'title'    => $rdata['status_history'][0]['name'],
+                'date'    => $rdata['status_history'][0]['date']
+            );
 
-				if (!empty($status_description)) {
-					$description = $status_description['description'];
-				} else {
-					$description = '';
-				}
+            if ($dispatch_info['delay_id']) {
+                $rdata['delay'] = array(
+                    'title'    => $dispatch_info['delay_description'],
+                    'date'    => $this->formatDate($dispatch_info['delay_date'])
+                );
+            } else {
+                $rdata['delay'] = array();
+            }
 
-				$rdata['status_history'][] = array(
-					'status_id'		=> $status_info['status_id'],
-					'name'			=> $status_info['description'],
-					'description'	=> $description,
-					'date'			=> $this->formatDate($status_info['date']),
-					'city'			=> $status_info['city_name']
-				);
-			}
+            $rdata['delay_history'] = array();
 
-			$rdata['status'] = array(
-				'title'	=> $rdata['status_history'][0]['name'],
-				'date'	=> $rdata['status_history'][0]['date']
-			);
+            foreach ($this->model_extension_module_cdek_integrator->getDelayHistory($this->request->get['order_id']) as $delay_info) {
 
-			if ($dispatch_info['delay_id']) {
-				$rdata['delay'] = array(
-					'title'	=> $dispatch_info['delay_description'],
-					'date'	=> $this->formatDate($dispatch_info['delay_date'])
-				);
-			} else {
-				$rdata['delay'] = array();
-			}
 
-			$rdata['delay_history'] = array();
+                $rdata['delay_history'][] = array(
+                    'delay_id'        => $delay_info['delay_id'],
+                    'name'            => $delay_info['description'],
+                    'date'            => $this->formatDate($delay_info['date'])
+                );
+            }
 
-			foreach($this->model_extension_module_cdek_integrator->getDelayHistory($this->request->get['order_id']) as $delay_info) {
+            if (file_exists(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf') && is_file(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf')) {
+                $rdata['pdf'] = $this->url->link('extension/module/cdek_integrator/showPdf', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL');
+            }
 
+            $tariff_info = $this->getInfo()->getTariffInfo($dispatch_info['tariff_id']);
 
-				$rdata['delay_history'][] = array(
-					'delay_id'		=> $delay_info['delay_id'],
-					'name'			=> $delay_info['description'],
-					'date'			=> $this->formatDate($delay_info['date'])
-				);
-			}
+            $pvz_list = array();
 
-			if (file_exists(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf') && is_file(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf')) {
-				$rdata['pdf'] = $this->url->link('extension/module/cdek_integrator/showPdf', 'user_token=' . $this->session->data['user_token'].'&order_id='.$this->request->get['order_id'], 'SSL');
-			}
+            if ($tariff_info) {
 
-			$tariff_info = $this->getInfo()->getTariffInfo($dispatch_info['tariff_id']);
+                $rdata['tariff'] = $tariff_info;
 
-			$pvz_list = array();
+                if (in_array((int)$tariff_info['mode_id'], array(2, 4)) && !empty($dispatch_info['address_pvz_code'])) {
 
-			if ($tariff_info) {
+                    $pvz_list = $this->getPVZ($dispatch_info['recipient_city_id']);
 
-				$rdata['tariff'] = $tariff_info;
+                    if (!empty($pvz_list['List'])) {
 
-				if (in_array((int)$tariff_info['mode_id'], array(2, 4)) && !empty($dispatch_info['address_pvz_code'])) {
+                        foreach ($pvz_list['List'] as $pvz_info) {
 
-					$pvz_list = $this->getPVZ($dispatch_info['recipient_city_id']);
+                            if ($dispatch_info['address_pvz_code'] == $pvz_info['Code']) {
 
-					if (!empty($pvz_list['List'])) {
+                                $rdata['dispatch_info']['pvz_info'] = $pvz_info;
 
-						foreach ($pvz_list['List'] as $pvz_info) {
+                                break;
+                            }
+                        }
+                    }
+                }
+            } else {
+                $rdata['tariff'] = array('title'    => '<span class="error">Тариф не определен!</span>');
+            }
 
-							if ($dispatch_info['address_pvz_code'] == $pvz_info['Code']) {
+            $courier_call = $this->model_extension_module_cdek_integrator->getCourierCall($this->request->get['order_id']);
 
-								$rdata['dispatch_info']['pvz_info'] = $pvz_info;
+            if ($courier_call) {
 
-								break;
-							}
+                $courier_call['date'] = $this->formatDate($courier_call['date'], FALSE);
 
-						}
+                foreach (array('time_beg', 'time_end', 'lunch_beg', 'lunch_end') as $time_key) {
+                    if ($courier_call[$time_key]) $courier_call[$time_key] = date('H:i', strtotime($courier_call[$time_key]));
+                }
 
-					}
+                $rdata['courier'] = $courier_call;
+            }
 
-				}
+            $rdata['schedule'] = array();
 
-			} else {
-				$rdata['tariff'] = array('title'	=> '<span class="error">Тариф не определен!</span>');
-			}
+            $schedule = $this->model_extension_module_cdek_integrator->getChedule($this->request->get['order_id']);
 
-			$courier_call = $this->model_extension_module_cdek_integrator->getCourierCall($this->request->get['order_id']);
+            foreach ($schedule as $attempt_info) {
 
-			if ($courier_call) {
+                $attempt_info['date'] = $this->formatDate($attempt_info['date'], FALSE);
 
-				$courier_call['date'] = $this->formatDate($courier_call['date'], FALSE);
+                foreach (array('time_beg', 'time_end') as $time_key) {
+                    $attempt_info[$time_key] = date('H:i', strtotime($attempt_info[$time_key]));
+                }
 
-				foreach (array('time_beg', 'time_end', 'lunch_beg', 'lunch_end') as $time_key) {
-					if ($courier_call[$time_key]) $courier_call[$time_key] = date('H:i', strtotime($courier_call[$time_key]));
-				}
+                if (!empty($attempt_info['address_pvz_code'])) {
 
-				$rdata['courier'] = $courier_call;
-			}
+                    if (!empty($pvz_list['List'])) {
 
-			$rdata['schedule'] = array();
+                        foreach ($pvz_list['List'] as $pvz_info) {
 
-			$schedule = $this->model_extension_module_cdek_integrator->getChedule($this->request->get['order_id']);
+                            if ($attempt_info['address_pvz_code'] == $pvz_info['Code']) {
 
-			foreach ($schedule as $attempt_info) {
+                                $attempt_info['pvz_info'] = $pvz_info;
 
-				$attempt_info['date'] = $this->formatDate($attempt_info['date'], FALSE);
+                                break;
+                            }
+                        }
+                    }
+                }
 
-				foreach (array('time_beg', 'time_end') as $time_key) {
-					$attempt_info[$time_key] = date('H:i', strtotime($attempt_info[$time_key]));
-				}
+                if ($attempt_info['phone'] != '' || $attempt_info['recipient_name'] != '') {
 
-				if (!empty($attempt_info['address_pvz_code'])) {
+                    $attempt_info['recipient_info'] = array();
 
-					if (!empty($pvz_list['List'])) {
+                    if ($attempt_info['phone'] != '') {
+                        $attempt_info['recipient_info']['phone'] = $attempt_info['phone'];
+                    }
 
-						foreach ($pvz_list['List'] as $pvz_info) {
+                    if ($attempt_info['recipient_name'] != '') {
+                        $attempt_info['recipient_info']['name'] = $attempt_info['recipient_name'];
+                    }
+                }
 
-							if ($attempt_info['address_pvz_code'] == $pvz_info['Code']) {
+                if ($attempt_info['address_street'] != '' && $attempt_info['address_house'] != '' || !empty($attempt_info['pvz_info'])) {
 
-								$attempt_info['pvz_info'] = $pvz_info;
+                    $attempt_info['address_info'] = array();
 
-								break;
-							}
+                    if ($attempt_info['address_street'] != '') {
+                        $attempt_info['address_info']['street'] = $attempt_info['address_street'];
+                    }
 
-						}
+                    if ($attempt_info['address_house'] != '') {
+                        $attempt_info['address_info']['house'] = $attempt_info['address_house'];
+                    }
 
-					}
+                    if ($attempt_info['address_flat'] != '') {
+                        $attempt_info['address_info']['flat'] = $attempt_info['address_flat'];
+                    }
 
-				}
+                    if (!empty($attempt_info['pvz_info'])) {
+                        $attempt_info['address_info']['pvz_info'] = $attempt_info['pvz_info'];
+                    }
+                }
 
-				if ($attempt_info['phone'] != '' || $attempt_info['recipient_name'] != '') {
+                $attempt_info['show_more'] = (!empty($attempt_info['recipient_info']) || !empty($attempt_info['address_info']) || $attempt_info['comment'] != '' || $attempt_info['delay'] != '');
 
-					$attempt_info['recipient_info'] = array();
+                $rdata['schedule'][] = $attempt_info;
+            }
 
-					if ($attempt_info['phone'] != '') {
-						$attempt_info['recipient_info']['phone'] = $attempt_info['phone'];
-					}
+            $rdata['call_history'] = array();
 
-					if ($attempt_info['recipient_name'] != '') {
-						$attempt_info['recipient_info']['name'] = $attempt_info['recipient_name'];
-					}
+            $call_history_good = $this->model_extension_module_cdek_integrator->getCallHistoryGood($this->request->get['order_id']);
 
-				}
+            if (!empty($call_history_good)) {
 
-				if ($attempt_info['address_street'] != '' && $attempt_info['address_house'] != '' || !empty($attempt_info['pvz_info'])) {
+                $rdata['call_history']['good'] = array();
 
-					$attempt_info['address_info'] = array();
+                foreach ($call_history_good as $call_good_info) {
 
-					if ($attempt_info['address_street'] != '') {
-						$attempt_info['address_info']['street'] = $attempt_info['address_street'];
-					}
+                    $rdata['call_history']['good'][] = array(
+                        'date'            => $this->formatDate($call_good_info['date']),
+                        'date_deliv'    => $this->formatDate($call_good_info['date_deliv'])
+                    );
+                }
+            }
 
-					if ($attempt_info['address_house'] != '') {
-						$attempt_info['address_info']['house'] = $attempt_info['address_house'];
-					}
+            $call_history_fail = $this->model_extension_module_cdek_integrator->getCallHistoryFail($this->request->get['order_id']);
 
-					if ($attempt_info['address_flat'] != '') {
-						$attempt_info['address_info']['flat'] = $attempt_info['address_flat'];
-					}
+            if (!empty($call_history_fail)) {
 
-					if (!empty($attempt_info['pvz_info'])) {
-						$attempt_info['address_info']['pvz_info'] = $attempt_info['pvz_info'];
-					}
+                $rdata['call_history']['fail'] = array();
 
-				}
+                foreach ($call_history_fail as $call_fail_info) {
 
-				$attempt_info['show_more'] = (!empty($attempt_info['recipient_info']) || !empty($attempt_info['address_info']) || $attempt_info['comment'] != '' || $attempt_info['delay'] != '');
+                    $rdata['call_history']['fail'][] = array(
+                        'fail_id'        => (int)$call_fail_info['fail_id'],
+                        'date'            => $this->formatDate($call_fail_info['date']),
+                        'description'    => $call_fail_info['description']
+                    );
+                }
+            }
 
-				$rdata['schedule'][] = $attempt_info;
-			}
+            $call_history_delay = $this->model_extension_module_cdek_integrator->getCallHistoryDelay($this->request->get['order_id']);
 
-			$rdata['call_history'] = array();
+            if (!empty($call_history_delay)) {
 
-			$call_history_good = $this->model_extension_module_cdek_integrator->getCallHistoryGood($this->request->get['order_id']);
+                $rdata['call_history']['delay'] = array();
 
-			if (!empty($call_history_good)) {
+                foreach ($call_history_delay as $call_delay_info) {
 
-				$rdata['call_history']['good'] = array();
+                    $rdata['call_history']['delay'][] = array(
+                        'date'        => $this->formatDate($call_delay_info['date']),
+                        'date_next'    => $this->formatDate($call_delay_info['date_next'])
+                    );
+                }
+            }
 
-				foreach($call_history_good as $call_good_info) {
+            $rdata['currency'] = $this->getInfo()->getCurrency($dispatch_info['currency']);
 
-					$rdata['call_history']['good'][] = array(
-						'date'			=> $this->formatDate($call_good_info['date']),
-						'date_deliv'	=> $this->formatDate($call_good_info['date_deliv'])
-					);
+            $rdata['packages'] = array();
 
-				}
+            $packages = $this->model_extension_module_cdek_integrator->getPackages($this->request->get['order_id']);
 
-			}
+            $weight_class_info = $this->model_localisation_weight_class->getWeightClass($this->config->get('config_weight_class_id'));
 
-			$call_history_fail = $this->model_extension_module_cdek_integrator->getCallHistoryFail($this->request->get['order_id']);
+            if ($weight_class_info) {
+                $rdata['weight_class'] = $weight_class_info['title'];
+            } else {
+                $rdata['weight_class'] = 'Граммы';
+            }
 
-			if (!empty($call_history_fail)) {
+            $length_class_info = $this->model_localisation_length_class->getLengthClass($this->config->get('config_length_class_id'));
 
-				$rdata['call_history']['fail'] = array();
+            if ($length_class_info) {
+                $rdata['length_class'] = $length_class_info['title'];
+            } else {
+                $rdata['length_class'] = 'Сантиметры';
+            }
 
-				foreach($call_history_fail as $call_fail_info) {
+            $change_weight = ($this->setting['weight_class_id'] != $this->config->get('config_weight_class_id'));
+            $change_length = ($this->setting['length_class_id'] != $this->config->get('config_length_class_id'));
 
-					$rdata['call_history']['fail'][] = array(
-						'fail_id'		=> (int)$call_fail_info['fail_id'],
-						'date'			=> $this->formatDate($call_fail_info['date']),
-						'description'	=> $call_fail_info['description']
-					);
+            foreach ($packages as $package_info) {
 
-				}
+                $items = array();
 
-			}
+                if ($change_weight) {
+                    $package_info['weight'] = $this->weight->convert($package_info['weight'], $this->setting['weight_class_id'], $this->config->get('config_weight_class_id'));
+                }
 
-			$call_history_delay = $this->model_extension_module_cdek_integrator->getCallHistoryDelay($this->request->get['order_id']);
+                if ((float)$package_info['size_a'] > 0 && (float)$package_info['size_b'] > 0 && (float)$package_info['size_c'] > 0) {
 
-			if (!empty($call_history_delay)) {
+                    $package_size = array($package_info['size_a'], $package_info['size_b'], $package_info['size_c']);
 
-				$rdata['call_history']['delay'] = array();
+                    foreach ($package_size as &$size_item) {
 
-				foreach($call_history_delay as $call_delay_info) {
+                        if ($change_length) {
+                            $size_item = $this->length->convert($size_item, $this->setting['length_class_id'], $this->config->get('config_length_class_id'));
+                        }
 
-					$rdata['call_history']['delay'][] = array(
-						'date'		=> $this->formatDate($call_delay_info['date']),
-						'date_next'	=> $this->formatDate($call_delay_info['date_next'])
-					);
+                        $size_item = (float)round($size_item, 2);
+                    }
 
-				}
+                    $package_info['package_size'] = implode(' x ', $package_size);
+                }
 
-			}
+                $package_items = $this->model_extension_module_cdek_integrator->getPackageItems($package_info['package_id'], $this->request->get['order_id']);
 
-			$rdata['currency'] = $this->getInfo()->getCurrency($dispatch_info['currency']);
+                $package_info['items'] = array();
 
-			$rdata['packages'] = array();
+                if (!$order_info || !$this->currency->getId($order_info['currency_code'])) {
+                    $order_info['currency_code'] = 'RUB';
+                }
 
-			$packages = $this->model_extension_module_cdek_integrator->getPackages($this->request->get['order_id']);
+                foreach ($package_items as $package_item) {
 
-			$weight_class_info = $this->model_localisation_weight_class->getWeightClass($this->config->get('config_weight_class_id'));
+                    if ($change_weight) {
+                        $package_item['weight'] = $this->weight->convert($package_item['weight'], $this->setting['weight_class_id'], $this->config->get('config_weight_class_id'));
+                    }
 
-			if ($weight_class_info) {
-				$rdata['weight_class'] = $weight_class_info['title'];
-			} else {
-				$rdata['weight_class'] = 'Граммы';
-			}
+                    $package_item['weight'] = (float)round($package_item['weight'], 4);
 
-			$length_class_info = $this->model_localisation_length_class->getLengthClass($this->config->get('config_length_class_id'));
+                    if ($this->config->get('config_currency') != $order_info['currency_code']) {
 
-			if ($length_class_info) {
-				$rdata['length_class'] = $length_class_info['title'];
-			} else {
-				$rdata['length_class'] = 'Сантиметры';
-			}
+                        $package_item['cost'] = $this->currency->convert($package_item['cost'], $order_info['currency_code'], $this->config->get('config_currency'));
+                        $package_item['payment'] = $this->currency->convert($package_item['payment'], $order_info['currency_code'], $this->config->get('config_currency'));
+                    }
 
-			$change_weight = ($this->setting['weight_class_id'] != $this->config->get('config_weight_class_id'));
-			$change_length = ($this->setting['length_class_id'] != $this->config->get('config_length_class_id'));
+                    $package_item['total'] = $this->currency->format($package_item['cost'] * $package_item['amount'], $this->config->get('config_currency'));
+                    $package_item['cost'] = $this->currency->format($package_item['cost'], $this->config->get('config_currency'));
+                    $package_item['payment'] = $this->currency->format($package_item['payment'], $this->config->get('config_currency'));
 
-			foreach ($packages as $package_info) {
+                    $package_info['items'][] = $package_item;
+                }
 
-				$items = array();
+                $rdata['packages'][] = $package_info;
+            }
 
-				if ($change_weight) {
-					$package_info['weight'] = $this->weight->convert($package_info['weight'], $this->setting['weight_class_id'], $this->config->get('config_weight_class_id'));
-				}
+            $rdata['add_service_total'] = 0;
 
-				if ((float)$package_info['size_a'] > 0 && (float)$package_info['size_b'] > 0 && (float)$package_info['size_c'] > 0) {
+            $rdata['add_service'] = array();
 
-					$package_size = array($package_info['size_a'], $package_info['size_b'], $package_info['size_c']);
+            $add_service = $this->model_extension_module_cdek_integrator->getAddService($this->request->get['order_id']);
 
-					foreach ($package_size as &$size_item) {
+            foreach ($add_service as $service_info) {
 
-						if ($change_length) {
-							$size_item = $this->length->convert($size_item, $this->setting['length_class_id'], $this->config->get('config_length_class_id'));
-						}
+                $cdek_service_info = $this->getInfo()->getAddService($service_info['service_id']);
 
-						$size_item = (float)round($size_item, 2);
-					}
+                if ($cdek_service_info) {
+                    $service_info['service_description'] = $cdek_service_info['description'];
+                }
 
-					$package_info['package_size'] = implode(' x ', $package_size);
-				}
+                if ($this->config->get('config_currency') == 'RUB') {
+                    $service_info['price'] = $this->currency->convert($service_info['price'], 'RUB', $this->config->get('config_currency'));
+                }
 
-				$package_items = $this->model_extension_module_cdek_integrator->getPackageItems($package_info['package_id'], $this->request->get['order_id']);
+                $rdata['add_service_total'] += $service_info['price'];
 
-				$package_info['items'] = array();
+                $service_info['price'] = $this->currency->format($service_info['price'], $this->config->get('config_currency'));
 
-				if (!$order_info || !$this->currency->getId($order_info['currency_code'])) {
-					$order_info['currency_code'] = 'RUB';
-				}
+                $rdata['add_service'][] = $service_info;
+            }
 
-				foreach ($package_items as $package_item) {
+            if ($rdata['add_service_total']) {
+                $rdata['add_service_total'] = $this->currency->format($rdata['add_service_total'], $this->config->get('config_currency'));
+            }
+        } else {
 
-					if ($change_weight) {
-						$package_item['weight'] = $this->weight->convert($package_item['weight'], $this->setting['weight_class_id'], $this->config->get('config_weight_class_id'));
-					}
+            $rdata['success'] = 'Отправление #' . $this->request->get['order_id'] . ' не найдено!';
+            $this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+        }
 
-					$package_item['weight'] = (float)round($package_item['weight'], 4);
+        if ($this->isAjax()) {
+            $this->response->setOutput($this->templateOutput('dispatch_info', $rdata));
+        } else {
+            $rdata['header'] = $this->load->controller('common/header');
+            $rdata['column_left'] = $this->load->controller('common/column_left');
+            $rdata['footer'] = $this->load->controller('common/footer');
 
-					if ($this->config->get('config_currency') != $order_info['currency_code']) {
+            $this->response->setOutput($this->templateOutput('dispatch_info_full', $rdata));
+        }
+    }
 
-						$package_item['cost'] = $this->currency->convert($package_item['cost'], $order_info['currency_code'], $this->config->get('config_currency'));
-						$package_item['payment'] = $this->currency->convert($package_item['payment'], $order_info['currency_code'], $this->config->get('config_currency'));
+    private function renderPage($render = TRUE)
+    {
 
-					}
+        if ($render) {
 
-					$package_item['total'] = $this->currency->format($package_item['cost'] * $package_item['amount'], $this->config->get('config_currency'));
-					$package_item['cost'] = $this->currency->format($package_item['cost'], $this->config->get('config_currency'));
-					$package_item['payment'] = $this->currency->format($package_item['payment'], $this->config->get('config_currency'));
+            $rdata['content'] = $this->render();
 
-					$package_info['items'][] = $package_item;
-				}
+            $this->children = array(
+                'common/header',
+                'common/footer'
+            );
 
-				$rdata['packages'][] = $package_info;
+            $this->template = 'extension/module/cdek_integrator/page';
+        }
 
-			}
+        $this->response->setOutput($this->render());
+    }
 
-			$rdata['add_service_total'] = 0;
+    public function dispatchPrint()
+    {
+        if (!file_exists(DIR_DOWNLOAD . 'cdek')) {
+            mkdir(DIR_DOWNLOAD . 'cdek', 0777, true);
+        }
 
-			$rdata['add_service'] = array();
+        if (file_exists(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf')) {
+            if ($this->isAjax()) {
+                $json['message'] = $this->session->data['success'];
+                $json['file'] = $this->url->link('extension/module/cdek_integrator/showPdf', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL');
+                $this->response->setOutput(json_encode($json));
+                exit;
+            } else {
+                $this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatchView', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL'));
+            }
+        }
 
-			$add_service = $this->model_extension_module_cdek_integrator->getAddService($this->request->get['order_id']);
+        $this->load->model('extension/module/cdek_integrator');
 
-			foreach ($add_service as $service_info) {
+        if ($this->isAjax()) {
 
-				$cdek_service_info = $this->getInfo()->getAddService($service_info['service_id']);
+            $json = array(
+                'status' => 'OK'
+            );
 
-				if ($cdek_service_info) {
-					$service_info['service_description'] = $cdek_service_info['description'];
-				}
+            if ($this->new_application || empty($this->request->get['order_id'])) {
+                $json['status'] = 'error';
+                $json['message'] = 'Не удалось загрузить квитанцию.';
+            }
+        } else {
 
-				if ($this->config->get('config_currency') == 'RUB') {
-					$service_info['price'] = $this->currency->convert($service_info['price'], 'RUB', $this->config->get('config_currency'));
-				}
+            if ($this->new_application) {
+                $this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+            } elseif (empty($this->request->get['order_id'])) {
+                $this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+            }
+        }
 
-				$rdata['add_service_total'] += $service_info['price'];
+        $dispatch_info = $this->model_extension_module_cdek_integrator->getDispatchInfo($this->request->get['order_id']);
 
-				$service_info['price'] = $this->currency->format($service_info['price'], $this->config->get('config_currency'));
+        if ($dispatch_info) {
 
-				$rdata['add_service'][] = $service_info;
+            $component = $this->api->loadComponent('order_print');
 
-			}
+            $exdata = array(
+                'copy_count'    => (isset($this->setting['copy_count']) ? (int)$this->setting['copy_count'] : 2),
+                'order'            => array(
+                    array('dispatch_number' => $dispatch_info['number'])
+                )
+            );
 
-			if ($rdata['add_service_total']) {
-				$rdata['add_service_total'] = $this->currency->format($rdata['add_service_total'], $this->config->get('config_currency'));
-			}
+            $component->setData($exdata);
 
-		} else {
+            $pdf_info = $this->api->sendData($component);
 
-			$rdata['success'] = 'Отправление #' . $this->request->get['order_id'] . ' не найдено!';
-			$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+            $this->logWrite();
 
-		}
+            if (!empty($pdf_info['requests']['errors'])) {
 
-		if($this->isAjax()) {
-			$this->response->setOutput($this->templateOutput('dispatch_info', $rdata));
-		} else {
-			$rdata['header'] = $this->load->controller('common/header');
-			$rdata['column_left'] = $this->load->controller('common/column_left');
-			$rdata['footer'] = $this->load->controller('common/footer');
+                foreach ($pdf_info['requests']['errors'] as $error) {
 
-			$this->response->setOutput($this->templateOutput('dispatch_info_full', $rdata));
-		}
-	}
+                    $this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
+                }
+            } else {
 
-	private function renderPage($render = TRUE) {
+                $component_info = $this->api->loadComponent('order_print_info');
 
-		if ($render) {
+                $component_info->setMethod($pdf_info['entity']['uuid']);
 
-			$rdata['content'] = $this->render();
+                $pdf_receipt = $this->api->sendData($component_info);
 
-			$this->children = array(
-				'common/header',
-				'common/footer'
-			);
+                $this->logWrite();
 
-			$this->template = 'extension/module/cdek_integrator/page';
-		}
+                if (!empty($pdf_receipt['requests']['errors'])) {
 
-		$this->response->setOutput($this->render());
-	}
+                    foreach ($pdf_receipt['requests']['errors'] as $error) {
 
-	public function dispatchPrint()
-	{
-		if (!file_exists(DIR_DOWNLOAD . 'cdek')) {
-			mkdir(DIR_DOWNLOAD . 'cdek', 0777, true);
-		}
+                        $this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
+                    }
+                } else {
 
-		if (file_exists(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf'))
-		{
-			if ($this->isAjax())
-			{
-				$json['message'] = $this->session->data['success'];
-				$json['file'] = $this->url->link('extension/module/cdek_integrator/showPdf', 'user_token=' . $this->session->data['user_token'].'&order_id='.$this->request->get['order_id'], 'SSL');
-				$this->response->setOutput(json_encode($json));
-				exit;
-			} else {
-				$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatchView', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL'));
-			}
-		}
+                    $download_pdf = $this->api->loadComponent('order_download_pdf');
 
-		$this->load->model('extension/module/cdek_integrator');
+                    $download_pdf->setMethod($pdf_receipt['entity']['uuid']);
 
-		if ($this->isAjax()) {
+                    $pdf = $this->api->sendData($download_pdf);
 
-			$json = array(
-				'status' => 'OK'
-			);
+                    $this->logWrite();
 
-			if ($this->new_application || empty($this->request->get['order_id'])) {
-				$json['status'] = 'error';
-				$json['message'] = 'Не удалось загрузить квитанцию.';
-			}
+                    if ($pdf != '') {
+                        file_put_contents(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf', $pdf);
+                        $this->session->data['success'] = 'Квитанция для заказа #' . $this->request->get['order_id'] . ' успешно загружена!';
+                    } else {
+                        $this->session->data['warning'] = 'Не удалось загрузить квитанцию, попробуйте ещё!';
+                    }
+                }
+            }
+        } else {
 
-		} else {
+            $this->session->data['warning'] = 'Заказ #' . $this->request->get['order_id'] . ' не найден в базе СДЭК!';
+        }
 
-			if ($this->new_application) {
-				$this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-			} elseif (empty($this->request->get['order_id'])) {
-				$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-			}
+        if ($this->isAjax()) {
 
-		}
+            if (!empty($this->session->data['warning'])) {
 
-		$dispatch_info = $this->model_extension_module_cdek_integrator->getDispatchInfo($this->request->get['order_id']);
+                $json['status'] = 'error';
+                $json['message'] = $this->session->data['warning'];
 
-		if ($dispatch_info) {
+                unset($this->session->data['warning']);
+            } else {
 
-			$component = $this->api->loadComponent('order_print');
+                $json['message'] = $this->session->data['success'];
+                $json['file'] = $this->url->link('extension/module/cdek_integrator/showPdf', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL');
+                unset($this->session->data['success']);
+            }
 
-			$exdata = array(
-				'copy_count'	=> (isset($this->setting['copy_count']) ? (int)$this->setting['copy_count'] : 2),
-				'order'			=> array(
-					array('dispatch_number' => $dispatch_info['number'])
-				)
-			);
+            $this->response->setOutput(json_encode($json));
+        } else {
+            $this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatchView', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL'));
+        }
+    }
 
-			$component->setData($exdata);
+    public function dispatchDelete()
+    {
 
-			$pdf_info = $this->api->sendData($component);
+        $this->load->model('extension/module/cdek_integrator');
 
-			$this->logWrite();
+        if ($this->isAjax()) {
 
-			if (!empty($pdf_info['requests']['errors'])) {
+            $json = array(
+                'status' => 'OK'
+            );
 
-				foreach ($pdf_info['requests']['errors'] as $error) {
+            if ($this->new_application || empty($this->request->get['order_id'])) {
+                $json['status'] = 'error';
+                $json['message'] = 'Не удалось загрузить квитанцию.';
+            }
+        } else {
 
-					$this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
+            if ($this->new_application) {
+                $this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+            } elseif (empty($this->request->get['order_id'])) {
+                $this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+            }
+        }
 
-				}
+        $dispatch_info = $this->model_extension_module_cdek_integrator->getDispatchInfo($this->request->get['order_id']);
 
-			} else {
+        if ($dispatch_info && ($dispatch_info['status_id'] == 'ACCEPTED') || $dispatch_info['status_id'] == 'INVALID') { // Удалить можно только новый заказ
 
-				$component_info = $this->api->loadComponent('order_print_info');
+            $forced = (isset($this->request->get['forced']));
 
-				$component_info->setMetod($pdf_info['entity']['uuid']);
+            $this->api->setDate(date('Y-m-d', $dispatch_info['date']));
+            $component = $this->api->loadComponent('order_delete');
+            $component->setNumber($dispatch_info['number']);
+            $component->setData(array($this->request->get['order_id']));
+            $response = $this->api->sendData($component);
 
-				$pdf_receipt = $this->api->sendData($component_info);
+            $this->logWrite();
+            if (!empty($response['requests']['errors'])) {
 
-				$this->logWrite();
-				
-				if (!empty($pdf_receipt['requests']['errors'])) {
+                foreach ($response['requests']['errors'] as $error) {
 
-					foreach ($pdf_receipt['requests']['errors'] as $error) {
+                    $this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
+                }
+            }
+            if ($forced || empty($response['requests']['errors'])) {
 
-						$this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
-	
-					}
+                if (file_exists(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf') && is_file(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf')) {
+                    @unlink(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf');
+                }
 
-				} else {
+                $this->model_extension_module_cdek_integrator->deleteDispatch($this->request->get['order_id']);
+                $this->session->data['success'] = 'Заказ #' . $dispatch_info['number'] . ' успешно удален.';
+                $this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+            } else {
 
-					$download_pdf = $this->api->loadComponent('order_download_pdf');
+                $error_list = $response['requests']['errors'];
 
-					$download_pdf->setMetod($pdf_receipt['entity']['uuid']);
+                $forced_delete = $this->url->link('extension/module/cdek_integrator/dispatchDelete', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $dispatch_info['order_id'] . '&forced', 'SSL');
 
-					$pdf = $this->api->sendData($download_pdf);
+                foreach ($error_list as $error) {
+                    $this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
+                }
+            }
+        } else {
+            $this->session->data['warning'] = 'Заказ #' . $this->request->get['order_id'] . ' не найден в базе СДЭК!';
+        }
 
-					$this->logWrite();
+        if ($this->isAjax()) {
 
-					if ($pdf != '') {
-						file_put_contents(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf', $pdf);
-						$this->session->data['success'] = 'Квитанция для заказа #' . $this->request->get['order_id'] . ' успешно загружена!';
-					} else {
-						$this->session->data['warning'] = 'Не удалось загрузить квитанцию, попробуйте ещё!';
-					}
-				}
+            $json['message'] = $this->session->data['success'];
+            unset($this->session->data['success']);
 
-			}
+            $this->response->setOutput(json_encode($json));
+        } else {
+            $this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+        }
+    }
 
-		} else {
+    private function sync($orders = array())
+    {
 
-			$this->session->data['warning'] = 'Заказ #' . $this->request->get['order_id'] . ' не найден в базе СДЭК!';
+        if (!$orders) return FALSE;
 
-		}
+        $update = array();
 
-		if ($this->isAjax()) {
+        foreach ($orders as $order) {
+            $component = $this->api->loadComponent('order_info');
 
-			if (!empty($this->session->data['warning'])) {
+            $component->setMethod($order['dispatch_number']);
 
-				$json['status'] = 'error';
-				$json['message'] = $this->session->data['warning'];
+            $info = $this->api->sendData($component);
 
-				unset($this->session->data['warning']);
+            $this->logWrite();
 
-			} else {
+            if (!empty($info['requests'][0]['errors'])) {
+                return false;
+            }
 
-				$json['message'] = $this->session->data['success'];
-				$json['file'] = $this->url->link('extension/module/cdek_integrator/showPdf', 'user_token=' . $this->session->data['user_token'].'&order_id='.$this->request->get['order_id'], 'SSL');
-				unset($this->session->data['success']);
+            if (isset($info)) {
 
-			}
+                $order_id = (int)$info['entity']['number'];
 
-			$this->response->setOutput(json_encode($json));
+                $update[$order_id]['delivery_cost'] = (string)$info['entity']['delivery_detail']['delivery_sum'];
+                $update[$order_id]['cdek_number'] = $info['entity']['cdek_number'];
+                if (isset($info['entity']['from_location']['postal_code'])) {
+                    $update[$order_id]['city_postcode'] = (string)$info['entity']['from_location']['postal_code'];
+                }
 
-		} else {
-			$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatchView', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL'));
-		}
-	}
+                if (isset($info['entity']['to_location']['postal_code'])) {
+                    $update[$order_id]['recipient_city_postcode'] = (string)$info['entity']['to_location']['postal_code'];
+                }
 
-	public function dispatchDelete() {
+                //changed
+                if (!empty($info['entity']['delivery_detail']['payment_sum'])) {
+                    $update[$order_id]['cod'] = (string)$info['entity']['delivery_detail']['payment_sum'];
+                    $update[$order_id]['cod_fact'] = (string)$info['entity']['delivery_detail']['payment_sum'];
+                } else {
+                    $update[$order_id]['cod'] = '';
+                    $update[$order_id]['cod_fact'] = '';
+                }
+            }
 
-		$this->load->model('extension/module/cdek_integrator');
+            if (isset($info)) {
+                $order_id = (int)$info['entity']['number'];
 
-		if ($this->isAjax()) {
+                if (!array_key_exists($order_id, $orders)) {
+                    continue;
+                }
 
-			$json = array(
-				'status' => 'OK'
-			);
+                $dispatch_info = $orders[$order_id];
 
-			if ($this->new_application || empty($this->request->get['order_id'])) {
-				$json['status'] = 'error';
-				$json['message'] = 'Не удалось загрузить квитанцию.';
-			}
+                if (!empty($info['entity']['delivery_detail']['date'])) {
+                    $update[$order_id]['delivery_date'] = (string)strtotime($info['entity']['delivery_detail']['date']);
+                }
 
-		} else {
+                if (!empty($info['entity']['delivery_detail']['recipient_name'])) {
+                    $update[$order_id]['delivery_recipient_name'] = (string)$info['entity']['delivery_detail']['recipient_name'];
+                }
 
-			if ($this->new_application) {
-				$this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-			} elseif (empty($this->request->get['order_id'])) {
-				$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-			}
+                $statuses = $info['entity']['statuses'];
 
-		}
+                $end_status = array_shift($statuses);
 
-		$dispatch_info = $this->model_extension_module_cdek_integrator->getDispatchInfo($this->request->get['order_id']);
+                $statuses[] = $end_status;
 
-		if ($dispatch_info && ($dispatch_info['status_id'] == 'ACCEPTED') || $dispatch_info['status_id'] == 'INVALID') { // Удалить можно только новый заказ
+                $status_id = $end_status['code'];
 
-			$forced = (isset($this->request->get['forced']));
+                if ($dispatch_info['status_id'] != $status_id) {
 
-			$this->api->setDate(date('Y-m-d', $dispatch_info['date']));
-			$component = $this->api->loadComponent('order_delete');
-			$component->setNumber($dispatch_info['number']);
-			$component->setData(array($this->request->get['order_id']));
-			$response = $this->api->sendData($component);
+                    $status_history = array();
 
-			$this->logWrite();
-			if (!empty($response['requests']['errors'])) {
+                    foreach ($statuses as $status_info) {
 
-				foreach ($response['requests']['errors'] as $error) {
+                        $status_history[] = array(
+                            'date'            => (string)strtotime($status_info['date_time']),
+                            'status_id'        => (string)$status_info['code'],
+                            'description'    => (string)$status_info['name'],
+                            'city_name'        => (string)$status_info['city']
+                        );
+                    }
 
-					$this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
+                    $update[$order_id] += array(
+                        'status_id'            => (string)$end_status['code'],
+                        'status_history'    => $status_history
+                    );
+                }
 
-				}
-			}
-			if ($forced || empty($response['requests']['errors'])) {
+                $delay_history = array();
 
-				if (file_exists(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf') && is_file(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf')) {
-					@unlink(DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf');
-				}
+                if (!empty($info['entity']['delivery_problem'])) {
 
-				$this->model_extension_module_cdek_integrator->deleteDispatch($this->request->get['order_id']);
-				$this->session->data['success'] = 'Заказ #' . $dispatch_info['number'] . ' успешно удален.';
-				$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+                    foreach ($info['entity']['delivery_problem'] as $delay_info) {
 
-			} else {
+                        $delay_history[] = array(
+                            'date'            => (string)strtotime($delay_info['create_date']),
+                            'delay_id'        => (int)$delay_info['code'],
+                            'description'    => (string)$delay_info['code'],
+                        );
+                    }
+                }
 
-				$error_list = $response['requests']['errors'];
+                //$delay_attributes = $item->DelayReason->attributes();
 
-				$forced_delete = $this->url->link('extension/module/cdek_integrator/dispatchDelete', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $dispatch_info['order_id'] . '&forced', 'SSL');
+                $update[$order_id] += array(
+                    'delay_id'            => (!empty($info['entity']['delivery_problem'][0]['code'])) ? (int)$info['entity']['delivery_problem'][0]['code'] : 0,
+                    'delay_history'        => $delay_history
+                );
+            }
+        }
 
-				foreach ($error_list as $error) {
-					$this->session->data['warning'] = $error['code'] . ': ' . $error['message'];
-				}
+        return $update;
+    }
 
-			}
+    public function dispatchSync()
+    {
 
-		} else {
-			$this->session->data['warning'] = 'Заказ #' . $this->request->get['order_id'] . ' не найден в базе СДЭК!';
-		}
+        $this->load->model('extension/module/cdek_integrator');
 
-		if ($this->isAjax()) {
-			
-			$json['message'] = $this->session->data['success'];
-			unset($this->session->data['success']);
+        if ($this->isAjax()) {
 
-			$this->response->setOutput(json_encode($json));
+            $json = array(
+                'status' => 'OK'
+            );
 
-		} else {
-			$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-		}
-	}
+            if ($this->new_application || empty($this->request->get['order_id'])) {
+                $json['status'] = 'error';
+                $json['message'] = 'Не удалось загрузить квитанцию.';
+            }
+        } else {
 
-	private function sync($orders = array()) {
+            if ($this->new_application) {
+                $this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+            } elseif (empty($this->request->get['order_id'])) {
+                $this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+            }
+        }
 
-		if (!$orders) return FALSE;
+        $dispatch_info = $this->model_extension_module_cdek_integrator->getDispatchInfo($this->request->get['order_id']);
 
-		$update = array();
+        if ($dispatch_info) {
+            $orders = array();
 
-		foreach($orders as $order) {
-			$component = $this->api->loadComponent('order_info');
+            $dispatch_info['dispatch_number'] = $dispatch_info['number'];
+            $orders[$this->request->get['order_id']] = $dispatch_info;
 
-			$component->setMetod($order['dispatch_number']);
+            $update = $this->sync($orders);
 
-			$info = $this->api->sendData($component);
+            if ((!empty($update)) && array_key_exists($this->request->get['order_id'], $update)) {
+                $exdata = reset($update);
 
-			$this->logWrite();
+                $this->model_extension_module_cdek_integrator->editDispatch($this->request->get['order_id'], $exdata);
+                $this->session->data['success'] = 'Заказ #' . $this->request->get['order_id'] . ' обновлен!<span class="help">Дата синхронизации: ' . $this->formatDate(time(), TRUE, FALSE) . '</span>';
+            } else {
+                $this->session->data['warning'] = 'Заказ #' . $this->request->get['order_id'] . ' отгружен некорректно!';
+            }
+        } else {
+            $this->session->data['warning'] = 'Заказ #' . $this->request->get['order_id'] . ' не найден в базе СДЭК!';
+        }
 
-			if (!empty($info['requests'][0]['errors'])) {
-				return false;
-			}
+        if ($this->isAjax()) {
 
-			if (isset($info)) {
+            if (!empty($this->session->data['warning'])) {
 
-				$order_id = (int)$info['entity']['number'];
+                $json['status'] = 'error';
+                $json['message'] = $this->session->data['warning'];
 
-				$update[$order_id]['delivery_cost'] = (string)$info['entity']['delivery_detail']['delivery_sum'];
-				$update[$order_id]['cdek_number'] = $info['entity']['cdek_number'];
-				if (isset($info['entity']['from_location']['postal_code'])) {
-					$update[$order_id]['city_postcode'] = (string)$info['entity']['from_location']['postal_code'];
-				}
-				
-				if (isset($info['entity']['to_location']['postal_code'])) {
-					$update[$order_id]['recipient_city_postcode'] = (string)$info['entity']['to_location']['postal_code'];
-				}
+                unset($this->session->data['warning']);
+            } else {
 
-				//changed
-				if(!empty($info['entity']['delivery_detail']['payment_sum'])) {
-					$update[$order_id]['cod'] = (string)$info['entity']['delivery_detail']['payment_sum'];
-					$update[$order_id]['cod_fact'] = (string)$info['entity']['delivery_detail']['payment_sum'];
-				} else {
-					$update[$order_id]['cod'] = '';
-					$update[$order_id]['cod_fact'] = '';
-				}
-			}
+                $json['message'] = isset($this->session->data['success']);
+                unset($this->session->data['success']);
 
-			if (isset($info)) {
-				$order_id = (int)$info['entity']['number'];
+                if (isset($this->request->get['target']) && $this->request->get['target'] == 'list') {
 
-				if (!array_key_exists($order_id, $orders)) {
-					continue;
-				}
+                    $dispatch_info = $this->model_extension_module_cdek_integrator->getDispatchInfo($this->request->get['order_id']);
 
-				$dispatch_info = $orders[$order_id];
+                    $json += array(
+                        'order_id'                => $dispatch_info['order_id'],
+                        'dispatch_number'        => $dispatch_info['number'],
+                        'cdek_number'            => $dispatch_info['cdek_number'],
+                        'act_number'            => $dispatch_info['act_number'],
+                        'date'                    => $this->formatDate($dispatch_info['date']),
+                        'city_name'                => $dispatch_info['city_name'],
+                        'recipient_city_name'    => $dispatch_info['recipient_city_name'],
+                        'status_title'            => $dispatch_info['status_description'],
+                        'status_date'            => $this->formatDate($dispatch_info['status_date']),
+                        'cost'                    => $this->currency->format($dispatch_info['delivery_cost'], $this->config->get('config_currency'))
+                    );
+                } else {
+                    $this->load->controller('extension/module/cdek_integrator/dispatchView');
+                }
+            }
 
-				if (!empty($info['entity']['delivery_detail']['date'])) {
-					$update[$order_id]['delivery_date'] = (string)strtotime($info['entity']['delivery_detail']['date']);
-				}
+            $this->response->setOutput(json_encode($json));
+        } else {
+            $this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatchView', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL'));
+        }
+    }
 
-				if (!empty($info['entity']['delivery_detail']['recipient_name'])) {
-					$update[$order_id]['delivery_recipient_name'] = (string)$info['entity']['delivery_detail']['recipient_name'];
-				}
+    public function getPVZByCity()
+    {
 
-				$statuses = $info['entity']['statuses'];
+        $json = array();
 
-				$end_status = array_shift($statuses);
+        if (isset($this->request->get['city_code']) && $pvz_list = $this->getPVZ($this->request->get['city_code'])) {
+            $json = $pvz_list;
+        }
 
-				$statuses[] = $end_status;
+        $this->response->setOutput(json_encode($json));
+    }
 
-				$status_id = $end_status['code'];
+    private function getPVZ($city_code)
+    {
+        $pvz_list = $this->getPVZList();
+        return array_key_exists($city_code, $pvz_list) ? $pvz_list[$city_code] : FALSE;
+    }
 
-				if ($dispatch_info['status_id'] != $status_id) {
+    private function getPVZList()
+    {
 
-					$status_history = array();
+        $exdata = $this->getInfo()->getPVZData();
 
-					foreach ($statuses as $status_info) {
+        if (!$exdata) {
+            $this->error['warning'] = $this->language->get('error_load_pvz');
+        }
 
-						$status_history[] = array(
-							'date'			=> (string)strtotime($status_info['date_time']),
-							'status_id'		=> (string)$status_info['code'],
-							'description'	=> (string)$status_info['name'],
-							'city_name'		=> (string)$status_info['city']
-						);
-					}
+        return $exdata;
+    }
 
-					$update[$order_id] += array(
-						'status_id'			=> (string)$end_status['code'],
-						'status_history'	=> $status_history
-					);
+    private function getPVZListSeller()
+    {
 
-				}
+        $exdata = $this->getInfo()->getPVZDataSell();
 
-				$delay_history = array();
+        if (!$exdata) {
+            $this->error['warning'] = $this->language->get('error_load_pvz');
+        }
 
-				if (!empty($info['entity']['delivery_problem'])) {
+        return $exdata;
+    }
 
-					foreach ($info['entity']['delivery_problem'] as $delay_info) {
+    private function getCity($cityName, $country_id, $zone_id)
+    {
 
-						$delay_history[] = array(
-							'date'			=> (string)strtotime($delay_info['create_date']),
-							'delay_id'		=> (int)$delay_info['code'],
-							'description'	=> (string)$delay_info['code'],
-						);
-					}
+        $city_info = array();
 
-				}
+        if (!$cityName) return '';
 
-				//$delay_attributes = $item->DelayReason->attributes();
+        if (!is_numeric($zone_id)) $zone_id = 0;
 
-				$update[$order_id] += array(
-					'delay_id'			=> (!empty($info['entity']['delivery_problem'][0]['code'])) ? (int)$info['entity']['delivery_problem'][0]['code'] : 0,
-					'delay_history'		=> $delay_history
-				);
+        if (!is_numeric($country_id) || !$country_id) $country_id = $this->config->get('config_country_id');
 
-			}
+        $countries = $regions = array();
+        $empty_country = $empty_zone = $from_db = FALSE;
 
-		}
+        if (!$country_id) {
+            $empty_country = TRUE;
+        } else {
 
-		return $update;
-	}
+            $this->load->model('localisation/country');
+            $country_info = $this->model_localisation_country->getCountry($country_id);
 
-	public function dispatchSync() {
+            if ($country_info) {
+                $countries = $this->prepareCountry($country_info['name']);
 
-		$this->load->model('extension/module/cdek_integrator');
+                $empty_country = $from_db = in_array('россия', $countries);
+            } else {
+                return FALSE;
+            }
+        }
 
-		if ($this->isAjax()) {
+        if (!$zone_id) {
+            $empty_zone = TRUE;
+        } else {
 
-			$json = array(
-				'status' => 'OK'
-			);
+            $this->load->model('localisation/zone');
+            $zone_info = $this->model_localisation_zone->getZone($zone_id);
 
-			if ($this->new_application || empty($this->request->get['order_id'])) {
-				$json['status'] = 'error';
-				$json['message'] = 'Не удалось загрузить квитанцию.';
-			}
+            if ($zone_info) {
+                $regions = $this->prepareRegion($zone_info['name']);
+            } else {
+                return FALSE;
+            }
+        }
 
-		} else {
+        $cityName = $this->_clear($cityName);
 
-			if ($this->new_application) {
-				$this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-			} elseif (empty($this->request->get['order_id'])) {
-				$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatch', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-			}
+        if ($cityName) {
 
-		}
+            // if ($from_db) {
 
-		$dispatch_info = $this->model_extension_module_cdek_integrator->getDispatchInfo($this->request->get['order_id']);
+            $this->load->model('extension/module/cdek_integrator');
+            $cdek_cities = $this->model_extension_module_cdek_integrator->getCity($cityName);
 
-		if ($dispatch_info) {
-			$orders = array();
+            // } else {
+            // 	$cdek_cities = $this->getCityByName($cityName);
+            // }
 
-			$dispatch_info['dispatch_number'] = $dispatch_info['number'];
-			$orders[$this->request->get['order_id']] = $dispatch_info;
+            if ($cdek_cities) {
 
-			$update = $this->sync($orders);
+                $available = array();
 
-			if ((!empty($update)) && array_key_exists($this->request->get['order_id'], $update)) {
-				$exdata = reset($update);
+                foreach ($cdek_cities as $cdek_city) {
 
-				$this->model_extension_module_cdek_integrator->editDispatch($this->request->get['order_id'], $exdata);
-				$this->session->data['success'] = 'Заказ #' . $this->request->get['order_id'] . ' обновлен!<span class="help">Дата синхронизации: ' . $this->formatDate(time(), TRUE, FALSE) . '</span>';
-			} else {
-				$this->session->data['warning'] = 'Заказ #' . $this->request->get['order_id'] . ' отгружен некорректно!';
-			}
+                    if (!$empty_country && !in_array($this->_clear($cdek_city['countryName']), $countries)) {
+                        continue;
+                    }
 
-		} else {
-			$this->session->data['warning'] = 'Заказ #' . $this->request->get['order_id'] . ' не найден в базе СДЭК!';
-		}
+                    if (!$empty_zone) {
 
-		if ($this->isAjax()) {
+                        list($region) = explode(' ', str_replace('обл.', '', trim($cdek_city['regionName'])));
 
-			if (!empty($this->session->data['warning'])) {
+                        if (!in_array($this->_clear($region), $regions)) {
+                            continue;
+                        }
+                    }
 
-				$json['status'] = 'error';
-				$json['message'] = $this->session->data['warning'];
+                    list($city) = explode(',', $cdek_city['name']);
 
-				unset($this->session->data['warning']);
+                    if (mb_strpos($this->_clear($city), $cityName) === 0) {
+                        $available[] = $cdek_city;
+                    }
+                }
 
-			} else {
+                if ($count = count($available)) {
 
-				$json['message'] = isset($this->session->data['success']);
-				unset($this->session->data['success']);
+                    if ($count > 1) {
 
-				if (isset($this->request->get['target']) && $this->request->get['target'] == 'list') {
+                        $sort_order = array();
 
-					$dispatch_info = $this->model_extension_module_cdek_integrator->getDispatchInfo($this->request->get['order_id']);
+                        foreach ($available as $key => $value) {
+                            $sort_order[$key] = (int)($this->_clear($value['name']) == $this->_clear($value['cityName']));
+                        }
 
-					$json += array(
-						'order_id'				=> $dispatch_info['order_id'],
-						'dispatch_number'		=> $dispatch_info['number'],
-						'cdek_number'		    => $dispatch_info['cdek_number'],
-						'act_number'			=> $dispatch_info['act_number'],
-						'date'					=> $this->formatDate($dispatch_info['date']),
-						'city_name'				=> $dispatch_info['city_name'],
-						'recipient_city_name'	=> $dispatch_info['recipient_city_name'],
-						'status_title'			=> $dispatch_info['status_description'],
-						'status_date'			=> $this->formatDate($dispatch_info['status_date']),
-						'cost'					=> $this->currency->format($dispatch_info['delivery_cost'], $this->config->get('config_currency'))
-					);
+                        array_multisort($sort_order, SORT_DESC, $available);
 
-				} else {
-					$this->load->controller('extension/module/cdek_integrator/dispatchView');
-				}
+                        $available = array($available[0]);
+                    }
 
-			}
+                    $city_info = reset($available);
+                }
+            } else {
+                return FALSE;
+            }
+        } else {
+            return FALSE;
+        }
 
-			$this->response->setOutput(json_encode($json));
+        return $city_info;
+    }
 
-		} else {
-			$this->response->redirect($this->url->link('extension/module/cdek_integrator/dispatchView', 'user_token=' . $this->session->data['user_token'] . '&order_id=' . $this->request->get['order_id'], 'SSL'));
-		}
+    private function prepareCountry($name = '')
+    {
 
-	}
+        $countries = array();
 
-	public function getPVZByCity() {
+        $name = $this->_clear($name);
 
-		$json = array();
+        if (in_array($name, array('российская федерация', 'россия', 'russian', 'russian federation'))) {
+            $countries[] = 'россия';
+        } elseif (in_array($name, array('украина', 'ukraine'))) {
+            $countries[] = 'украина';
+        } elseif (in_array($name, array('белоруссия', 'белоруссия (беларусь)', 'беларусь', '(беларусь)', 'belarus'))) {
+            $countries[] = 'беларусь';
+        } elseif (in_array($name, array('казахстан', 'kazakhstan'))) {
+            $countries[] = 'казахстан';
+        } elseif (in_array($name, array('сша', 'соединенные штаты америки', 'соединенные штаты', 'usa', 'united states'))) {
+            $countries[] = 'сша';
+        } elseif (in_array($name, array('aзербайджан', 'azerbaijan'))) {
+            $countries[] = 'aзербайджан';
+        } elseif (in_array($name, array('узбекистан', 'uzbekistan'))) {
+            $countries[] = 'узбекистан';
+        } elseif (in_array($name, array('китайская народная республика', 'сhina'))) {
+            $countries[] = 'китай (кнр)';
+        } else {
+            $countries[] = $name;
+        }
 
-		if (isset($this->request->get['city_code']) && $pvz_list = $this->getPVZ($this->request->get['city_code'])) {
-			$json = $pvz_list;
-		}
+        return $countries;
+    }
 
-		$this->response->setOutput(json_encode($json));
-	}
+    private function prepareRegion($name = '')
+    {
 
-	private function getPVZ($city_code) {
-		$pvz_list = $this->getPVZList();
-		return array_key_exists($city_code, $pvz_list) ? $pvz_list[$city_code] : FALSE;
-	}
+        $regions = array();
 
-	private function getPVZList() {
+        $parts = explode(' ', $name);
+        $parts = array_map(array($this, '_clear'), $parts);
 
-		$exdata = $this->getInfo()->getPVZData();
+        if (in_array($parts[0], array('московская', 'москва'))) {
+            $regions[] = 'москва';
+            $regions[] = 'московская';
+        } elseif (in_array($parts[0], array('ленинградская', 'санкт-петербург'))) {
+            $regions[] = 'санкт-петербург';
+            $regions[] = 'ленинградская';
+        } elseif (mb_strpos($parts[0], 'респ') === 0) {
+            $regions[] = $parts[1];
+        } elseif (in_array($parts[0], array('киев', 'киевская'))) { // Украина
+            $regions[] = 'киевская';
+            $regions[] = 'киев';
+        } elseif (in_array($parts[0], array('винница', 'винницкая'))) { // Украина
+            $regions[] = 'винница';
+            $regions[] = 'винницкая';
+        } elseif (in_array($parts[0], array('днепропетровск', 'днепропетровская'))) { // Украина
+            $regions[] = 'днепропетровск';
+            $regions[] = 'днепропетровская';
+        } else {
+            $regions = $parts;
+        }
 
-		if (!$exdata) {
-			$this->error['warning'] = $this->language->get('error_load_pvz');
-		}
+        return $regions;
+    }
 
-		return $exdata;
-	}
+    private function _clear($value)
+    {
+        $value = mb_convert_case($value, MB_CASE_LOWER, "UTF-8");
+        return trim($value);
+    }
 
-	private function getPVZListSeller() {
+    private function fomatAddress($exdata)
+    {
 
-		$exdata = $this->getInfo()->getPVZDataSell();
+        $address = '';
 
-		if (!$exdata) {
-			$this->error['warning'] = $this->language->get('error_load_pvz');
-		}
+        if (!empty($exdata['shipping_lastname'])) $address .= $exdata['shipping_lastname'];
 
-		return $exdata;
-	}
+        if (!empty($exdata['shipping_firstname'])) {
 
-	private function getCity($cityName, $country_id, $zone_id) {
+            if ($address) $address .= " ";
 
-		$city_info = array();
+            $address .= $exdata['shipping_firstname'];
+        }
 
-		if (!$cityName) return '';
+        if (!empty($exdata['shipping_company'])) $address .= ', ' . $exdata['shipping_company'];
 
-		if (!is_numeric($zone_id)) $zone_id = 0;
+        if (!empty($exdata['shipping_address_1'])) $address .= ', ' . $exdata['shipping_address_1'];
 
-		if (!is_numeric($country_id) || !$country_id) $country_id = $this->config->get('config_country_id');
+        if (!empty($exdata['shipping_address_2'])) $address .= ', ' . $exdata['shipping_address_2'];
 
-		$countries = $regions = array();
-		$empty_country = $empty_zone = $from_db = FALSE;
+        if (!empty($exdata['shipping_city'])) $address .= ', ' . $exdata['shipping_city'];
 
-		if (!$country_id) {
-			$empty_country = TRUE;
-		} else {
+        if (!empty($exdata['shipping_zone'])) $address .= ', ' . $exdata['shipping_zone'];
 
-			$this->load->model('localisation/country');
-			$country_info = $this->model_localisation_country->getCountry($country_id);
+        if (!empty($exdata['shipping_postcode'])) $address .= ', ' . $exdata['shipping_postcode'];
 
-			if ($country_info) {
-				$countries = $this->prepareCountry($country_info['name']);
+        if (!empty($exdata['shipping_country'])) $address .= ', ' . $exdata['shipping_country'];
 
-				$empty_country = $from_db = in_array('россия', $countries);
+        return $address;
+    }
 
-			} else {
-				return FALSE;
-			}
+    private function getPaymentMethods()
+    {
 
-		}
+        $this->load->model('setting/extension');
 
-		if (!$zone_id) {
-			$empty_zone = TRUE;
-		} else {
+        $payment_extensions = $this->model_setting_extension->getInstalled('payment');
 
-			$this->load->model('localisation/zone');
-			$zone_info = $this->model_localisation_zone->getZone($zone_id);
+        foreach ($payment_extensions as $key => $method) {
+            if (!$this->config->get('payment_' . $method . '_status')) {
+                unset($payment_extensions[$key]);
+            }
+        }
 
-			if ($zone_info) {
-				$regions = $this->prepareRegion($zone_info['name']);
-			} else {
-				return FALSE;
-			}
+        $payment_methods = array();
 
-		}
+        $files = glob(DIR_APPLICATION . 'controller/extension/payment/*.php');
 
-		$cityName = $this->_clear($cityName);
+        if ($files) {
 
-		if ($cityName) {
+            foreach ($files as $file) {
 
-			// if ($from_db) {
+                $method = basename($file, '.php');
 
-				$this->load->model('extension/module/cdek_integrator');
-				$cdek_cities = $this->model_extension_module_cdek_integrator->getCity($cityName);
+                if (in_array($method, $payment_extensions)) {
+                    $this->load->language('extension/payment/' . $method);
+                    $payment_methods[$method] = $this->language->get('heading_title');
+                }
+            }
+        }
 
-			// } else {
-			// 	$cdek_cities = $this->getCityByName($cityName);
-			// }
+        return $payment_methods;
+    }
 
-			if ($cdek_cities) {
+    public function getAjaxPackingWeight()
+    {
 
-				$available = array();
+        if ($this->isAjax()) {
 
-				foreach ($cdek_cities as $cdek_city) {
+            $json = array();
+            $json['packing_weight'] = $this->getPackingWeight((float)$this->request->get['weight']);
+            $this->response->setOutput(json_encode($json));
+        } else {
+            $this->request->get['route'] = 'error/not_found';
+            return $this->forward($this->request->get['route']);
+        }
+    }
 
-					if (!$empty_country && !in_array($this->_clear($cdek_city['countryName']), $countries)) {
-						continue;
-					}
+    private function getPackingWeight($weight)
+    {
 
-					if (!$empty_zone) {
+        $packing_min_weight = $this->weight->convert((float)$this->setting['packing_min_weight'], $this->setting['packing_weight_class_id'], $this->setting['weight_class_id']);
 
-						list($region) = explode(' ', str_replace('обл.', '', trim($cdek_city['regionName'])));
+        $packing_weight = 0;
 
-						if (!in_array($this->_clear($region), $regions)) {
-							continue;
-						}
-					}
+        $packing_value = (float)$this->setting['packing_value'];
 
-					list($city)= explode(',', $cdek_city['name']);
+        if ($packing_value) {
 
-					if (mb_strpos($this->_clear($city), $cityName) === 0) {
-						$available[] = $cdek_city;
-					}
+            switch ($this->setting['packing_mode']) {
+                case 'fixed':
+                    $packing_weight = $packing_value;
+                    break;
+                case 'all_percent':
+                    $packing_weight = ($weight / 100) * $packing_value;
+                    break;
+            }
 
-				}
+            if ($packing_min_weight && $packing_min_weight > $packing_weight) {
+                $packing_weight = $packing_min_weight;
+            }
+        } elseif ($packing_min_weight) {
+            $packing_weight = $packing_min_weight;
+        }
 
-				if ($count = count($available)) {
+        return array(
+            'weight'    => $packing_weight,
+            'prefix'    => $this->setting['packing_prefix']
+        );
+    }
 
-					if ($count > 1) {
+    private function getShippingMethods()
+    {
 
-						$sort_order = array();
+        $this->load->model('setting/extension');
 
-						foreach ($available as $key => $value) {
-							$sort_order[$key] = (int)($this->_clear($value['name']) == $this->_clear($value['cityName']));
-						}
+        $shipping_extensions = $this->model_setting_extension->getInstalled('shipping');
 
-						array_multisort($sort_order, SORT_DESC, $available);
+        foreach ($shipping_extensions as $key => $method) {
+            if (!$this->config->get('shipping_' . $method . '_status')) {
+                unset($shipping_extensions[$key]);
+            }
+        }
 
-						$available = array($available[0]);
-					}
+        $shipping_methods = array();
 
-					$city_info = reset($available);
+        $files = glob(DIR_APPLICATION . 'controller/extension/shipping/*.php');
 
-				}
+        if ($files) {
 
-			} else {
-				return FALSE;
-			}
+            foreach ($files as $file) {
 
-		} else {
-			return FALSE;
-		}
+                $method = basename($file, '.php');
 
-		return $city_info;
-	}
+                if (in_array($method, $shipping_extensions)) {
 
-	private function prepareCountry($name = '') {
+                    $this->load->language('extension/shipping/' . $method);
+                    $shipping_methods[$method] = $this->language->get('heading_title');
+                }
+            }
+        }
 
-		$countries = array();
+        return $shipping_methods;
+    }
 
-		$name = $this->_clear($name);
+    private function getInfo()
+    {
 
-		if (in_array($name, array('российская федерация', 'россия', 'russian', 'russian federation'))) {
-			$countries[] = 'россия';
-		} elseif(in_array($name, array('украина', 'ukraine'))) {
-			$countries[] = 'украина';
-		} elseif(in_array($name, array('белоруссия', 'белоруссия (беларусь)', 'беларусь', '(беларусь)', 'belarus'))) {
-			$countries[] = 'беларусь';
-		} elseif(in_array($name, array('казахстан', 'kazakhstan'))) {
-			$countries[] = 'казахстан';
-		} elseif(in_array($name, array('сша', 'соединенные штаты америки', 'соединенные штаты', 'usa', 'united states'))) {
-			$countries[] = 'сша';
-		} elseif(in_array($name, array('aзербайджан', 'azerbaijan'))) {
-			$countries[] = 'aзербайджан';
-		} elseif(in_array($name, array('узбекистан', 'uzbekistan'))) {
-			$countries[] = 'узбекистан';
-		} elseif(in_array($name, array('китайская народная республика', 'сhina'))) {
-			$countries[] = 'китай (кнр)';
-		} else {
-			$countries[] = $name;
-		}
+        static $instance;
 
-		return $countries;
-	}
+        if (!$instance) {
+            $instance = $this->api->loadComponent('info');
+        }
 
-	private function prepareRegion($name = '') {
+        return $instance;
+    }
 
-		$regions = array();
+    private function validateOption()
+    {
 
-		$parts = explode(' ', $name);
-		$parts = array_map(array($this, '_clear'), $parts);
+        if (!$this->setting['edit_mode']) {
+            $this->error['warning'] = $this->language->get('error_permission');
+        }
 
-		if (in_array($parts[0], array('московская', 'москва'))) {
-			$regions[] = 'москва';
-			$regions[] = 'московская';
-		} elseif (in_array($parts[0], array('ленинградская', 'санкт-петербург'))) {
-			$regions[] = 'санкт-петербург';
-			$regions[] = 'ленинградская';
-		} elseif (mb_strpos($parts[0], 'респ') === 0) {
-			$regions[] = $parts[1];
-		} elseif (in_array($parts[0], array('киев', 'киевская'))) { // Украина
-			$regions[] = 'киевская';
-			$regions[] = 'киев';
-		} elseif (in_array($parts[0], array('винница', 'винницкая'))) { // Украина
-			$regions[] = 'винница';
-			$regions[] = 'винницкая';
-		} elseif (in_array($parts[0], array('днепропетровск', 'днепропетровская'))) { // Украина
-			$regions[] = 'днепропетровск';
-			$regions[] = 'днепропетровская';
-		} else {
-			$regions = $parts;
-		}
+        $post = $this->request->post;
 
-		return $regions;
-	}
+        $post = !empty($this->request->post['cdek_integrator_setting']) ? $this->request->post['cdek_integrator_setting'] : array();
 
-	private function _clear($value) {
-		$value = mb_convert_case($value, MB_CASE_LOWER, "UTF-8");
-		return trim($value);
-	}
+        foreach (array('weight_class_id', 'length_class_id', 'account', 'secure_password') as $item) {
 
-	private function fomatAddress($exdata) {
+            if (empty($post[$item])) {
+                $this->error['setting'][$item] = $this->language->get('error_empty');
+            }
+        }
 
-		$address = '';
+        if (!empty($post['new_order'])) {
 
-		if (!empty($exdata['shipping_lastname'])) $address .= $exdata['shipping_lastname'];
+            if (!is_numeric($post['new_order'])) {
+                $this->error['setting']['new_order'] = $this->language->get('error_numeric');
+            } elseif ($post['new_order'] < 0) {
+                $this->error['setting']['new_order'] = $this->language->get('error_positive_numeric');
+            }
+        }
 
-		if (!empty($exdata['shipping_firstname'])) {
+        if ($post['replace_items']) {
 
-			if ($address) $address .= " ";
+            if ($post['replace_item_name'] == '') {
+                $this->error['setting']['replace_item_name'] = $this->language->get('error_empty');
+            }
 
-			$address .= $exdata['shipping_firstname'];
-		}
+            foreach (array('replace_item_cost', 'replace_item_payment', 'replace_item_amount') as $item) {
+                if ($post[$item] != '' && !is_numeric($post[$item])) {
+                    $this->error['setting'][$item] = $this->language->get('error_numeric');
+                }
+            }
+        }
 
-		if (!empty($exdata['shipping_company'])) $address .= ', ' . $exdata['shipping_company'];
+        if ($post['delivery_recipient_cost'] != '' && !is_numeric($post['delivery_recipient_cost'])) {
+            $this->error['setting']['delivery_recipient_cost'] = $this->language->get('error_numeric');
+        }
 
-		if (!empty($exdata['shipping_address_1'])) $address .= ', ' . $exdata['shipping_address_1'];
+        if ($post['cdek_default_data']['use']) {
 
-		if (!empty($exdata['shipping_address_2'])) $address .= ', ' . $exdata['shipping_address_2'];
+            $default_param = $post['cdek_default_data'];
 
-		if (!empty($exdata['shipping_city'])) $address .= ', ' . $exdata['shipping_city'];
+            foreach (array('size_a', 'size_b', 'size_c') as $item) {
 
-		if (!empty($exdata['shipping_zone'])) $address .= ', ' . $exdata['shipping_zone'];
+                if (!is_numeric($default_param[$item])) {
+                    $this->error['setting']['cdek_default_data']['size'] = $this->language->get('error_numeric');
+                    break;
+                } elseif ($default_param[$item] <= 0) {
+                    $this->error['setting']['cdek_default_data']['size'] = $this->language->get('error_positive_numeric');
+                    break;
+                }
+            }
 
-		if (!empty($exdata['shipping_postcode'])) $address .= ', ' . $exdata['shipping_postcode'];
+            if (!is_numeric($default_param['weight'])) {
+                $this->error['setting']['cdek_default_data']['weight'] = $this->language->get('error_numeric');
+            } elseif ($default_param['weight'] <= 0) {
+                $this->error['setting']['cdek_default_data']['weight'] = $this->language->get('error_positive_numeric');
+            }
+        }
 
-		if (!empty($exdata['shipping_country'])) $address .= ', ' . $exdata['shipping_country'];
+        if ($this->error && empty($this->error['warning'])) {
+            $this->error['warning'] = $this->language->get('error_warning');
+        }
 
-		return $address;
-	}
+        return (!$this->error);
+    }
 
-	private function getPaymentMethods() {
+    private function validateOrderFrom()
+    {
 
-		$this->load->model('setting/extension');
+        if (!isset($this->setting['edit_mode'])) {
+            $this->error['warning'][] = $this->language->get('error_permission');
+        } else {
 
-		$payment_extensions = $this->model_setting_extension->getInstalled('payment');
+            $post = $this->request->post;
 
-		foreach ($payment_extensions as $key => $method) {
-			if (!$this->config->get('payment_'. $method . '_status')) {
-				unset($payment_extensions[$key]);
-			}
-		}
+            if (!empty($post['cdek_orders'])) {
 
-		$payment_methods = array();
+                $attempt_exists = $courier_exists = array();
 
-		$files = glob(DIR_APPLICATION . 'controller/extension/payment/*.php');
+                $tariff_list = $this->getInfo()->getTariffList();
 
-		if ($files) {
+                $order_info = $post['cdek_orders'];
 
-			foreach ($files as $file) {
+                $order_id = $order_info['order_id'];
 
-				$method = basename($file, '.php');
+                if (!$order_info['city_id']) {
+                    $this->error['cdek_orders']['city_id'] = $this->language->get('error_empty');
+                }
 
-				if (in_array($method, $payment_extensions)) {
-					$this->load->language('extension/payment/' . $method);
-					$payment_methods[$method] = $this->language->get('heading_title');
+                if (!$order_info['recipient_city_id']) {
+                    $this->error['cdek_orders']['recipient_city_id'] = $this->language->get('error_empty');
+                    $this->error['cdek_orders']['recipient'] = true;
+                }
 
-				}
-			}
+                if (utf8_strlen($order_info['recipient_name']) < 1) {
+                    $this->error['cdek_orders']['recipient_name'] = $this->language->get('error_empty');
+                    $this->error['cdek_orders']['recipient'] = true;
+                }
 
-		}
+                if ($order_info['recipient_telephone'] == '') {
+                    $this->error['cdek_orders']['recipient_telephone'] = $this->language->get('error_empty');
 
-		return $payment_methods;
-	}
+                    $this->error['cdek_orders']['recipient'] = true;
+                }
 
-	public function getAjaxPackingWeight() {
+                if ($order_info['recipient_email'] != '') {
 
-		if ($this->isAjax()) {
+                    if (!filter_var($order_info['recipient_email'], FILTER_VALIDATE_EMAIL)) {
+                        $this->error['cdek_orders']['recipient_email'] = $this->language->get('error_email');
+                        $this->error['cdek_orders']['recipient'] = true;
+                    } else {
 
-			$json = array();
-			$json['packing_weight'] = $this->getPackingWeight((float)$this->request->get['weight']);
-			$this->response->setOutput(json_encode($json));
+                        $valid = true;
 
-		} else {
-			$this->request->get['route'] = 'error/not_found';
-			return $this->forward($this->request->get['route']);
-		}
+                        $domain = rtrim(substr($order_info['recipient_email'], strpos($order_info['recipient_email'], '@') + 1), '>');
 
-	}
+                        if (function_exists('checkdnsrr')) {
+                            $valid = checkdnsrr($domain, 'MX');
+                        } elseif (function_exists('getmxrr')) {
+                            $valid = getmxrr($domain);
+                        }
 
-	private function getPackingWeight($weight) {
+                        if (!$valid) {
+                            $this->error['cdek_orders']['recipient_email'] = sprintf($this->language->get('error_domain'), $domain);
+                            $this->error['cdek_orders']['recipient'] = true;
+                        }
+                    }
+                }
 
-		$packing_min_weight = $this->weight->convert((float)$this->setting['packing_min_weight'], $this->setting['packing_weight_class_id'], $this->setting['weight_class_id']);
+                if ($order_info['cod'] && $order_info['currency_cod'] != $this->setting['currency_agreement']) {
+                    $this->error['cdek_orders']['currency_cod'] = $this->language->get('error_currency_cod');
+                }
 
-		$packing_weight = 0;
+                if ($order_info['delivery_recipient_cost'] != '' && !is_numeric($order_info['delivery_recipient_cost'])) {
+                    $this->error['cdek_orders']['delivery_recipient_cost'] = $this->language->get('error_numeric');
+                }
 
-		$packing_value = (float)$this->setting['packing_value'];
+                if ($order_info['cdek_comment'] != '' && utf8_strlen($order_info['cdek_comment']) > 255) {
+                    $this->error['cdek_orders']['cdek_comment'] = $this->language->get('error_maxlength_255');
+                }
 
-		if ($packing_value) {
+                foreach ($order_info['package'] as $package_id => $package_info) {
 
-			switch ($this->setting['packing_mode']) {
-				case 'fixed':
-					$packing_weight = $packing_value;
-					break;
-				case 'all_percent':
-					$packing_weight = ($weight / 100) * $packing_value;
-					break;
-			}
+                    if (empty((int)$package_info['weight']) || !is_numeric($package_info['weight'])) {
+                        $this->error['cdek_orders']['package'][$package_id]['weight'] = $this->language->get('error_numeric');
+                    } elseif ((int)$package_info['weight'] <= 0) {
+                        $this->error['cdek_orders']['package'][$package_id]['weight'] = $this->language->get('error_positive_numeric');
+                    }
 
-			if ($packing_min_weight && $packing_min_weight > $packing_weight) {
-				$packing_weight = $packing_min_weight;
-			}
+                    foreach (array('size_a', 'size_b', 'size_c') as $size) {
+                        if (empty((int)$package_info[$size]) || !is_numeric($package_info[$size])) {
 
-		} elseif ($packing_min_weight) {
-			$packing_weight = $packing_min_weight;
-		}
+                            $this->error['cdek_orders']['package'][$package_id]['size'] = $this->language->get('error_numeric');
 
-		return array(
-			'weight'	=> $packing_weight,
-			'prefix'	=> $this->setting['packing_prefix']
-		);
-	}
+                            break;
+                        }
+                    }
 
-	private function getShippingMethods() {
+                    if (!empty($package_info['item'])) {
 
-		$this->load->model('setting/extension');
+                        foreach ($package_info['item'] as $item_row => $package_item) {
 
-		$shipping_extensions = $this->model_setting_extension->getInstalled('shipping');
+                            if (empty((int)$package_item['weight']) || !is_numeric($package_item['weight'])) {
+                                $this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['weight'] = $this->language->get('error_numeric');
+                            } elseif (empty($package_item['weight']) && $package_item['weight'] <= 0) {
+                                $this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['weight'] = $this->language->get('error_positive_numeric');
+                            }
 
-		foreach ($shipping_extensions as $key => $method) {
-			if (!$this->config->get('shipping_' . $method . '_status')) {
-				unset($shipping_extensions[$key]);
-			}
-		}
+                            if ($package_item['cost'] == '' || !is_numeric($package_item['cost'])) {
+                                $this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['cost'] = $this->language->get('error_numeric');
+                            } elseif ($package_item['cost'] < 0) {
+                                $this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['cost'] = $this->language->get('error_positive_numeric');
+                            }
 
-		$shipping_methods = array();
+                            if (!empty($package_item['payment'])) {
 
-		$files = glob(DIR_APPLICATION . 'controller/extension/shipping/*.php');
+                                if (!is_numeric($package_item['payment'])) {
+                                    $this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['payment'] = $this->language->get('error_numeric');
+                                } elseif ($package_item['payment'] <= 0) {
+                                    $this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['payment'] = $this->language->get('error_positive_numeric');
+                                }
+                            }
 
-		if ($files) {
+                            if ($package_item['amount'] == '' || !is_numeric($package_item['amount'])) {
+                                $this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['amount'] = $this->language->get('error_numeric');
+                            } elseif ($package_item['amount'] <= 0) {
+                                $this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['amount'] = $this->language->get('error_positive_numeric');
+                            }
+                        }
+                    } else {
+                        $this->error['cdek_orders']['package'][$package_id]['warning'] = 'Список вложений пуст';
+                    }
+                }
 
-			foreach ($files as $file) {
+                if (!$order_info['tariff_id'] || !isset($tariff_list[$order_info['tariff_id']])) {
+                    $this->error['cdek_orders']['tariff_id'] = $this->language->get('error_tariff_id');
+                } else {
 
-				$method = basename($file, '.php');
+                    $tariff_info = $tariff_list[$order_info['tariff_id']];
 
-				if (in_array($method, $shipping_extensions)) {
+                    if (in_array($tariff_info['mode_id'], array(1, 3))) { // Д-Д, С-Д
 
-					$this->load->language('extension/shipping/' . $method);
-					$shipping_methods[$method] = $this->language->get('heading_title');
+                        if ($order_info['address']['street'] == '') {
+                            $this->error['cdek_orders']['address']['street'] = $this->language->get('error_empty');
+                        }
 
-				}
-			}
+                        if ($order_info['address']['house'] == '') {
+                            $this->error['cdek_orders']['address']['house'] = $this->language->get('error_empty');
+                        }
 
-		}
+                        if ($order_info['address']['flat'] == '') {
+                            $this->error['cdek_orders']['address']['flat'] = $this->language->get('error_empty');
+                        }
+                    } else { // C-C, C-Д
 
-		return $shipping_methods;
-	}
+                        if ($order_info['address']['pvz_code'] == '') {
+                            $this->error['cdek_orders']['address']['pvz_code'] = $this->language->get('error_empty');
+                        }
+                    }
 
-	private function getInfo() {
+                    if ($order_info['courier']['call']) {
 
-		static $instance;
+                        if ($order_info['courier']['date'] == '' || !$this->validateDate($order_info['courier']['date'], FALSE)) {
+                            $this->error['cdek_orders']['courier']['date'] = $this->language->get('error_date');
+                        } elseif (!$this->validateDate($order_info['courier']['date'], TRUE, 'Y-m-d')) {
+                            $this->error['cdek_orders']['courier']['date'] = $this->language->get('error_date_futured');
+                        } else {
 
-		if (!$instance) {
-			$instance = $this->api->loadComponent('info');
-		}
+                            $timestamp = strtotime(date('Y-m-d', strtotime($order_info['courier']['date'])));
 
-		return $instance;
-	}
+                            if (in_array($timestamp, $courier_exists)) {
+                                $this->error['cdek_orders']['courier']['date'] = $this->language->get('error_courier_date_exists');
+                            } else {
+                                $courier_exists[] = strtotime(date('Y-m-d', strtotime($order_info['courier']['date'])));
+                            }
+                        }
 
-	private function validateOption() {
+                        if ($order_info['courier']['time_beg'] == '' || !$this->validateTime($order_info['courier']['time_beg']) || $order_info['courier']['time_end'] == '' || !$this->validateTime($order_info['courier']['time_end'])) {
+                            $this->error['cdek_orders']['courier']['time'] = $this->language->get('error_time');
+                        } elseif ((strtotime($order_info['courier']['time_end']) - strtotime($order_info['courier']['time_beg'])) < 10800) {
+                            $this->error['cdek_orders']['courier']['time'] = $this->language->get('error_time_interval_3');
+                        }
 
-		if (!$this->setting['edit_mode']) {
-			$this->error['warning'] = $this->language->get('error_permission');
-		}
+                        if ($order_info['courier']['lunch_beg'] != '' || $order_info['courier']['lunch_end'] != '') {
 
-		$post = $this->request->post;
+                            if ($order_info['courier']['lunch_beg'] == '' || !$this->validateTime($order_info['courier']['lunch_beg']) || ($order_info['courier']['lunch_end'] == '' || !$this->validateTime($order_info['courier']['lunch_end']))) {
+                                $this->error['cdek_orders']['courier']['lunch'] = $this->language->get('error_time');
+                            }
+                        }
+                    }
+                }
+            } else {
+                $this->error['warning'][] = $this->language->get('error_empty_order_list');
+            }
+        }
 
-		$post = !empty($this->request->post['cdek_integrator_setting']) ? $this->request->post['cdek_integrator_setting'] : array();
+        if ($this->error && empty($this->error['warning'])) {
+            $this->error['warning'][] = $this->language->get('error_warning');
+        }
 
-		foreach (array('weight_class_id', 'length_class_id', 'account', 'secure_password') as $item) {
+        return (!$this->error);
+    }
 
-			if (empty($post[$item])) {
-				$this->error['setting'][$item] = $this->language->get('error_empty');
-			}
+    private function validateDate($str, $current = TRUE, $format = 'Y-m-d')
+    {
 
-		}
+        $status = TRUE;
 
-		if (!empty($post['new_order'])) {
+        if (!$str) {
+            $status = FALSE;
+        } elseif (date($format, strtotime($str)) != trim($str)) {
+            $status = FALSE;
+        } elseif ($current && strtotime($str) <= strtotime(date($format))) {
+            $status = FALSE;
+        }
 
-			if (!is_numeric($post['new_order'])) {
-				$this->error['setting']['new_order'] = $this->language->get('error_numeric');
-			} elseif ($post['new_order'] < 0) {
-				$this->error['setting']['new_order'] = $this->language->get('error_positive_numeric');
-			}
+        return $status;
+    }
 
-		}
+    private function validateTime($time, $format = 'H:i')
+    {
 
-		if ($post['replace_items']) {
+        $status = TRUE;
 
-			if ($post['replace_item_name'] == '') {
-				$this->error['setting']['replace_item_name'] = $this->language->get('error_empty');
-			}
+        if (!$time) {
+            $status = FALSE;
+        } elseif (strtotime($time) === FALSE) {
+            $status = FALSE;
+        }
 
-			foreach (array('replace_item_cost', 'replace_item_payment', 'replace_item_amount') as $item) {
-				if ($post[$item] != '' && !is_numeric($post[$item])) {
-					$this->error['setting'][$item] = $this->language->get('error_numeric');
-				}
-			}
+        return (bool)$status;
+    }
 
-		}
+    private function declination($number, $titles)
+    {
+        $cases = array(2, 0, 1, 1, 1, 2);
+        return $titles[($number % 100 > 4 && $number % 100 < 20) ? 2 : $cases[min($number % 10, 5)]];
+    }
 
-		if ($post['delivery_recipient_cost'] != '' && !is_numeric($post['delivery_recipient_cost'])) {
-			$this->error['setting']['delivery_recipient_cost'] = $this->language->get('error_numeric');
-		}
+    private function getDateExecuted($format = 'Y-m-d\TH:i:sP')
+    {
+        return gmdate($format, $this->time_execute);
+    }
 
-		if ($post['cdek_default_data']['use']) {
+    private function isAjax()
+    {
+        return (isset($this->request->server['HTTP_X_REQUESTED_WITH']) && $this->request->server['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest');
+    }
 
-			$default_param = $post['cdek_default_data'];
+    private function getSetting()
+    {
+        return $this->config->get('cdek_integrator_setting');
+    }
 
-			foreach (array('size_a', 'size_b', 'size_c') as $item) {
+    private function init()
+    {
 
-				if (!is_numeric($default_param[$item])) {
-					$this->error['setting']['cdek_default_data']['size'] = $this->language->get('error_numeric');
-					break;
-				} elseif ($default_param[$item] <= 0) {
-					$this->error['setting']['cdek_default_data']['size'] = $this->language->get('error_positive_numeric');
-					break;
-				}
+        $this->setting = $this->getSetting();
+        $this->time_execute = time();
+        $this->new_application = empty($this->setting);
 
-			}
+        if (php_sapi_name() != "cli") {
+            $this->setting['edit_mode'] = $this->user->hasPermission('modify', 'extension/module/cdek_integrator');
+        }
 
-			if (!is_numeric($default_param['weight'])) {
-				$this->error['setting']['cdek_default_data']['weight'] = $this->language->get('error_numeric');
-			} elseif ($default_param['weight'] <= 0) {
-				$this->error['setting']['cdek_default_data']['weight'] = $this->language->get('error_positive_numeric');
-			}
+        $this->load->language('extension/module/cdek_integrator');
 
-		}
+        $this->document->addStyle('view/stylesheet/cdek_integrator.css');
+        $this->document->addScript('view/javascript/jquery/cdek_integrator.js');
 
-		if ($this->error && empty($this->error['warning'])) {
-			$this->error['warning'] = $this->language->get('error_warning');
-		}
+        require_once DIR_SYSTEM . 'library/cdek_integrator/class.app.php';
+        app::registry()->create($this->registry);
 
-		return (!$this->error);
-	}
+        require_once DIR_SYSTEM . 'library/cdek_integrator/class.cdek_integrator.php';
+        $account = !empty($this->setting['account']) ? $this->setting['account'] : '';
+        $secure = !(empty($this->setting['secure_password'])) ? $this->setting['secure_password'] : '';
+        $this->api = new cdek_integrator($account, $secure);
 
-	private function validateOrderFrom() {
+        if (!empty($this->setting['account']) && !empty($this->setting['secure_password'])) {
+            $this->api->setAuth($this->setting['account'], $this->setting['secure_password']);
+        }
+    }
 
-		if (!isset($this->setting['edit_mode'])) {
-			$this->error['warning'][] = $this->language->get('error_permission');
-		} else {
+    public function checkInstall()
+    {
+        $status = $this->model_tool_cdek_tool->checkInstalled('module', 'cdek_integrator');
 
-			$post = $this->request->post;
+        if (!$status) {
+            $this->install();
+        }
+    }
 
-			if (!empty($post['cdek_orders'])) {
+    public function install()
+    {
 
-				$attempt_exists = $courier_exists = array();
+        $this->load->model('extension/module/cdek_integrator');
+        $this->model_extension_module_cdek_integrator->install();
+    }
 
-				$tariff_list = $this->getInfo()->getTariffList();
+    public function uninstall()
+    {
 
-				$order_info = $post['cdek_orders'];
+        $this->load->model('extension/module/cdek_integrator');
+        $this->model_extension_module_cdek_integrator->uninstall();
+    }
 
-				$order_id = $order_info['order_id'];
+    public function cron()
+    {
+        $this->load->model('extension/module/cdek_integrator');
+        $this->load->model('sale/order');
 
-				if (!$order_info['city_id']) {
-					$this->error['cdek_orders']['city_id'] = $this->language->get('error_empty');
-				}
+        if (!isset($this->setting['order_status_rule'])) {
+            $this->log->write('Не заданы правила соответствия статусов');
+            return;
+        }
 
-				if (!$order_info['recipient_city_id']) {
-					$this->error['cdek_orders']['recipient_city_id'] = $this->language->get('error_empty');
-					$this->error['cdek_orders']['recipient'] = true;
-				}
+        $_order_status_rule = $this->setting['order_status_rule'];
+        $status_rules = array();
 
-				if (utf8_strlen($order_info['recipient_name']) < 1) {
-					$this->error['cdek_orders']['recipient_name'] = $this->language->get('error_empty');
-					$this->error['cdek_orders']['recipient'] = true;
-				}
+        foreach ($_order_status_rule as $_rule) {
+            $status_rules[(int)$_rule['cdek_status_id']] = $_rule;
+        }
 
-				if ($order_info['recipient_telephone'] == '') {
-					$this->error['cdek_orders']['recipient_telephone'] = $this->language->get('error_empty');
-					
-					$this->error['cdek_orders']['recipient'] = true;
-				}
+        $_dispatches = $this->model_extension_module_cdek_integrator->getDispatchesToSync(false);
 
-				if ($order_info['recipient_email'] != '') {
+        $dispatches = array();
+        $orders = array();
+        foreach ($_dispatches as $key => $dispatch_info) {
+            $orders[] = array(
+                'dispatch_number' => $dispatch_info['dispatch_number']
+            );
 
-					if (!filter_var($order_info['recipient_email'], FILTER_VALIDATE_EMAIL)) {
-						$this->error['cdek_orders']['recipient_email'] = $this->language->get('error_email');
-						$this->error['cdek_orders']['recipient'] = true;
-					} else {
+            $dispatches[$dispatch_info['dispatch_number']] = $dispatch_info;
+        }
 
-						$valid = true;
+        if (!$orders) {
+            echo "Not found dispatches to check.";
+            return;
+        }
 
-						$domain = rtrim(substr($order_info['recipient_email'], strpos($order_info['recipient_email'],'@')+1), '>');
+        foreach ($orders as $order) {
+            $component = $this->api->loadComponent('order_info');
 
-						if (function_exists('checkdnsrr')) {
-							$valid = checkdnsrr($domain, 'MX');
-						} elseif (function_exists('getmxrr')) {
-							$valid = getmxrr($domain);
-						}
+            $component->setMethod($order['dispatch_number']);
 
-						if (!$valid) {
-							$this->error['cdek_orders']['recipient_email'] = sprintf($this->language->get('error_domain'), $domain);
-							$this->error['cdek_orders']['recipient'] = true;
-						}
-					}
+            $info = $this->api->sendData($component);
 
-				}
+            $this->logWrite();
 
-				if ($order_info['cod'] && $order_info['currency_cod'] != $this->setting['currency_agreement']) {
-					$this->error['cdek_orders']['currency_cod'] = $this->language->get('error_currency_cod');
-				}
+            $dispatch_number = (string)$info['entity']['uuid'];
 
-				if ($order_info['delivery_recipient_cost'] != '' && !is_numeric($order_info['delivery_recipient_cost'])) {
-					$this->error['cdek_orders']['delivery_recipient_cost'] = $this->language->get('error_numeric');
-				}
+            if (isset($info['requests'][0]['errors'])) {
+                echo $order->attributes()->Msg . $dispatch_number . PHP_EOL;
+                continue;
+            }
+            if (!isset($dispatches[$dispatch_number])) {
+                echo "WARNING: Not isses dispatch " . $dispatch_number . PHP_EOL;
+                continue;
+            }
 
-				if ($order_info['cdek_comment'] != '' && utf8_strlen($order_info['cdek_comment']) > 255) {
-					$this->error['cdek_orders']['cdek_comment'] = $this->language->get('error_maxlength_255');
-				}
+            $statuses = $info['entity']['statuses'];
 
-				foreach ($order_info['package'] as $package_id => $package_info) {
+            $end_status = array_shift($statuses);
 
-					if (empty((int)$package_info['weight']) || !is_numeric($package_info['weight'])) {
-						$this->error['cdek_orders']['package'][$package_id]['weight'] = $this->language->get('error_numeric');
-					} elseif ((int)$package_info['weight'] <= 0) {
-						$this->error['cdek_orders']['package'][$package_id]['weight'] = $this->language->get('error_positive_numeric');
-					}
+            $status_id = $end_status['code'];
 
-					foreach (array('size_a', 'size_b', 'size_c') as $size) {
-						if (empty((int)$package_info[$size]) || !is_numeric($package_info[$size])) {
+            $dispatch = $dispatches[$dispatch_number];
 
-							$this->error['cdek_orders']['package'][$package_id]['size'] = $this->language->get('error_numeric');
+            if ($dispatch['status_id'] == $status_id) {
+                echo "Order with dispatch " . $dispatch_number . " not chenged" . PHP_EOL;
+                continue;
+            }
 
-							break;
-						}
-					}					
+            echo "Working with " . $dispatch_number . " status " . $status_id . PHP_EOL;
 
-					if (!empty($package_info['item'])) {
+            $filter_data = array(
+                $dispatch_info['order_id'] => $dispatch
+            );
 
-						foreach ($package_info['item'] as $item_row => $package_item) {
+            $update = $this->sync($filter_data);
 
-							if (empty((int)$package_item['weight']) || !is_numeric($package_item['weight'])) {
-								$this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['weight'] = $this->language->get('error_numeric');
-							} elseif (empty($package_item['weight']) && $package_item['weight'] <= 0) {
-								$this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['weight'] = $this->language->get('error_positive_numeric');
-							}
+            if (isset($update[$dispatch['order_id']])) {
+                $this->model_extension_module_cdek_integrator->editDispatch($dispatch['order_id'], $update[$dispatch['order_id']]);
+            }
 
-							if ($package_item['cost'] == '' || !is_numeric($package_item['cost'])) {
-								$this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['cost'] = $this->language->get('error_numeric');
-							}  elseif ($package_item['cost'] < 0) {
-								$this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['cost'] = $this->language->get('error_positive_numeric');
-							}
+            echo PHP_EOL;
+        }
+    }
 
-							if (!empty($package_item['payment'])) {
+    private function clearCurrencyFormat($value, $decimal_place = 2, $decimal_point = '.', $thousand_point = ' ')
+    {
+        return number_format(round($value, (int)$decimal_place), (int)$decimal_place, $decimal_point, $thousand_point);
+    }
 
-								if (!is_numeric($package_item['payment'])) {
-									$this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['payment'] = $this->language->get('error_numeric');
-								} elseif ($package_item['payment'] <= 0) {
-									$this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['payment'] = $this->language->get('error_positive_numeric');
-								}
+    public function showPdf()
+    {
+        $order_id = 0;
+        if (isset($this->request->get['order_id']) && (int)$this->request->get['order_id']) {
+            $order_id = (int)$this->request->get['order_id'];
+        }
 
-							}
+        $file = DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf';
 
-							if ($package_item['amount'] == '' || !is_numeric($package_item['amount'])) {
-								$this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['amount'] = $this->language->get('error_numeric');
-							} elseif ($package_item['amount'] <= 0) {
-								$this->error['cdek_orders']['package'][$package_id]['item'][$item_row]['amount'] = $this->language->get('error_positive_numeric');
-							}
+        if (file_exists($file) && is_file($file)) {
+            $content = file_get_contents($file);
 
-						}
+            header('Content-Type: application/pdf');
+            header('Content-Length: ' . strlen($content));
+            header('Content-Disposition: inline; filename="invoice-' . $order_id . '.pdf"');
+            header('Cache-Control: private, max-age=0, must-revalidate');
+            header('Pragma: public');
+            ini_set('zlib.output_compression', '0');
 
-					} else {
-						$this->error['cdek_orders']['package'][$package_id]['warning'] = 'Список вложений пуст';
-					}
+            die($content);
 
-				}
+            $rdata['pdf'] = HTTP_CATALOG . 'download/cdek/order-' . $this->request->get['order_id'] . '.pdf';
+        } else {
+            echo 'not found pdf for order ' . $order_id;
+        }
+    }
 
-				if (!$order_info['tariff_id'] || !isset($tariff_list[$order_info['tariff_id']])) {
-					$this->error['cdek_orders']['tariff_id'] = $this->language->get('error_tariff_id');
-				} else {
+    public function getCityByName($cityName = null)
+    {
+        $cdek_cities = array();
 
-					$tariff_info = $tariff_list[$order_info['tariff_id']];
+        if ($cityName) {
+            $cdek_cities = $this->getInfo()->getCityByName($cityName);
+            return $cdek_cities;
+        }
 
-					if (in_array($tariff_info['mode_id'], array(1, 3))) { // Д-Д, С-Д
+        if (isset($this->request->get['q'])) {
+            $cityName = $this->request->get['q'];
+        } elseif (isset($this->request->get['name_startsWith'])) {
+            $cityName = $this->request->get['name_startsWith'];
+        } elseif (isset($this->request->get['search'])) {
+            $cityName = $this->request->get['search'];
+        }
 
-						if ($order_info['address']['street'] == '') {
-							$this->error['cdek_orders']['address']['street'] = $this->language->get('error_empty');
-						}
+        if ($cityName) {
+            $cdek_cities = $this->getInfo()->getCityByName($cityName);
+        }
 
-						if ($order_info['address']['house'] == '') {
-							$this->error['cdek_orders']['address']['house'] = $this->language->get('error_empty');
-						}
+        echo json_encode($cdek_cities);
+    }
 
-						if ($order_info['address']['flat'] == '') {
-							$this->error['cdek_orders']['address']['flat'] = $this->language->get('error_empty');
-						}
+    public function logWrite()
+    {
+        if ($this->config->get('shipping_cdek_log')) {
+            $this->log->write('СДЭК: url запроса');
+            $this->log->write(print_r($this->api->curl_url, 1));
+            $this->log->write('СДЭК: передаваемые данные');
+            $this->log->write(print_r($this->api->curl_data, 1));
+            $this->log->write('СДЭК: ответ');
+            $this->log->write(print_r($this->api->curl_success, 1));
+        }
+    }
 
-					} else { // C-C, C-Д
+    public function updateCities()
+    {
 
-						if ($order_info['address']['pvz_code'] == '') {
-							$this->error['cdek_orders']['address']['pvz_code'] = $this->language->get('error_empty');
-						}
+        $this->load->model('extension/module/cdek_integrator');
+        $this->load->language('extension/module/cdek_integrator');
 
-					}
-					
-					if ($order_info['courier']['call']) {
+        ini_set('max_execution_time', 900);
+        ini_set('output_buffering ', 'off');
 
-						if ($order_info['courier']['date'] == '' || !$this->validateDate($order_info['courier']['date'], FALSE)) {
-							$this->error['cdek_orders']['courier']['date'] = $this->language->get('error_date');
-						} elseif (!$this->validateDate($order_info['courier']['date'], TRUE, 'Y-m-d')) {
-							$this->error['cdek_orders']['courier']['date'] = $this->language->get('error_date_futured');
-						} else {
+        $countries = array(
+            'RU',
+            'AM',
+            'BY',
+            'KZ',
+            'KG',
+            'UA',
+            'UZ'
+        );
 
-							$timestamp = strtotime(date('Y-m-d', strtotime($order_info['courier']['date'])));
+        $this->model_extension_module_cdek_integrator->deleteCities();
 
-							if (in_array($timestamp, $courier_exists)) {
-								$this->error['cdek_orders']['courier']['date'] = $this->language->get('error_courier_date_exists');
-							} else {
-								$courier_exists[] = strtotime(date('Y-m-d', strtotime($order_info['courier']['date'])));
-							}
+        $info = $this->api->loadComponent('info');
 
-						}
+        $auth_token = $info->getAuthToken();
+        if (isset($auth_token['access_token'])) {
+            foreach ($countries as $country) {
 
-						if ($order_info['courier']['time_beg'] == '' || !$this->validateTime($order_info['courier']['time_beg']) || $order_info['courier']['time_end'] == '' || !$this->validateTime($order_info['courier']['time_end'])) {
-							$this->error['cdek_orders']['courier']['time'] = $this->language->get('error_time');
-						} elseif ((strtotime($order_info['courier']['time_end']) - strtotime($order_info['courier']['time_beg'])) < 10800) {
-							$this->error['cdek_orders']['courier']['time'] = $this->language->get('error_time_interval_3');
-						}
+                $check_unique = array();
 
-						if ($order_info['courier']['lunch_beg'] != '' || $order_info['courier']['lunch_end'] != '') {
+                for ($i = 0;; $i++) {
 
-							if ($order_info['courier']['lunch_beg'] == '' || !$this->validateTime($order_info['courier']['lunch_beg']) || ($order_info['courier']['lunch_end'] == '' || !$this->validateTime($order_info['courier']['lunch_end']))) {
-								$this->error['cdek_orders']['courier']['lunch'] = $this->language->get('error_time');
-							}
+                    $url = 'https://api.cdek.ru/v2/location/cities?size=1000&country_codes=' . $country . '&page=' . $i;
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, $url);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+                    curl_setopt(
+                        $ch,
+                        CURLOPT_HTTPHEADER,
+                        array(
+                            'Authorization: Bearer ' . $auth_token['access_token'],
+                            'Content-Type: application/json'
+                        )
+                    );
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 50);
+                    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 50);
 
-						}
+                    $out = curl_exec($ch);
 
-					}
+                    $out = json_decode($out, true);
 
-				}
+                    $data = array();
 
-			} else {
-				$this->error['warning'][] = $this->language->get('error_empty_order_list');
-			}
+                    foreach ($out as $value) {
+                        if (!empty($value['code'])) {
+                            if (!empty($value['region'])) {
+                                $name = $value['city'] . ', ' . $value['region'];
+                                $region = $value['region'];
+                            } else {
+                                $name = $value['city'] . ',' . $value['country'];
+                                $region = '';
+                            }
+                            if (!empty($value['payment_limit'])) {
+                                $payment_limit = (float)$value['payment_limit'];
+                            } else {
+                                $payment_limit = (float)0;
+                            }
+                            if (!in_array($value['code'], $check_unique)) {
+                                $data[] = array(
+                                    'id' => $value['code'],
+                                    'name' => $name,
+                                    'cityName' => $value['city'],
+                                    'regionName' => $region,
+                                    'payment_limit' => $payment_limit,
+                                );
 
-		}
+                                $check_unique[] = $value['code'];
+                            }
+                        }
+                    }
 
-		if ($this->error && empty($this->error['warning'])) {
-			$this->error['warning'][] = $this->language->get('error_warning');
-		}
+                    $this->model_extension_module_cdek_integrator->addCities($data);
 
-		return (!$this->error);
-	}
 
-	private function validateDate($str, $current = TRUE, $format = 'Y-m-d') {
+                    if (count($out) < 1000) {
+                        break;
+                    }
 
-		$status = TRUE;
+                    // ob_start();
 
-		if (!$str) {
-			$status = FALSE;
-		} elseif (date($format, strtotime($str)) != trim($str)) {
-			$status = FALSE;
-		} elseif ($current && strtotime($str) <= strtotime(date($format))) {
-			$status = FALSE;
-		}
+                    // header('HTTP/1.1 202 Accepted');
+                    // echo "Обновлено городов: " . 1000*$i . ". Обновление продолжается./n";
 
-		return $status;
-	}
+                    // ob_end_flush();
+                }
+            }
 
-	private function validateTime($time, $format = 'H:i') {
+            $this->session->data['success'] = $this->language->get('text_updatesuccess');
+        } else {
+            $this->log->write('СДЭК: ошибка авторизации');
+        }
 
-		$status = TRUE;
+        if (!empty($this->request->get['redirect'])) {
+            $this->response->redirect($this->url->link($this->request->get['redirect'], 'user_token=' . $this->session->data['user_token'], 'SSL'));
+        } else {
+            $this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
+        }
+    }
 
-		if (!$time) {
-			$status = FALSE;
-		} elseif (strtotime($time) === FALSE) {
-			$status = FALSE;
-		}
-
-		return (bool)$status;
-	}
-
-	private function declination($number, $titles) {
-		$cases = array (2, 0, 1, 1, 1, 2);
-		return $titles[ ($number%100 > 4 && $number %100 < 20) ? 2 : $cases[min($number%10, 5)] ];
-	}
-
-	private function getDateExecuted($format = 'Y-m-d\TH:i:sP') {
-		return gmdate($format, $this->time_execute);
-	}
-
-	private function isAjax() {
-		return (isset($this->request->server['HTTP_X_REQUESTED_WITH']) && $this->request->server['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest');
-	}
-
-	private function getSetting() {
-		return $this->config->get('cdek_integrator_setting');
-	}
-
-	private function init() {
-
-		$this->setting = $this->getSetting();
-		$this->time_execute = time();
-		$this->new_application = empty($this->setting);
-
-		if(php_sapi_name() != "cli") {
-			$this->setting['edit_mode'] = $this->user->hasPermission('modify', 'extension/module/cdek_integrator');
-		}
-
-		$this->load->language('extension/module/cdek_integrator');
-
-		$this->document->addStyle('view/stylesheet/cdek_integrator.css');
-		$this->document->addScript('view/javascript/jquery/cdek_integrator.js');
-
-		require_once DIR_SYSTEM . 'library/cdek_integrator/class.app.php';
-		app::registry()->create($this->registry);
-
-		require_once DIR_SYSTEM . 'library/cdek_integrator/class.cdek_integrator.php';
-		$account = !empty($this->setting['account']) ? $this->setting['account'] : '';
-		$secure = !(empty($this->setting['secure_password'])) ? $this->setting['secure_password'] : '';
-		$this->api = new cdek_integrator($account, $secure);
-
-		if (!empty($this->setting['account']) && !empty($this->setting['secure_password'])) {
-			$this->api->setAuth($this->setting['account'], $this->setting['secure_password']);
-		}
-
-	}
-
-	public function checkInstall() {
-		$status = $this->model_tool_cdektool->checkInstalled('module', 'cdek_integrator');
-
-		if (!$status) {
-			$this->install();
-		}
-	}
-
-	public function install() {
-
-		$this->load->model('extension/module/cdek_integrator');
-		$this->model_extension_module_cdek_integrator->install();
-
-	}
-
-	public function uninstall() {
-
-		$this->load->model('extension/module/cdek_integrator');
-		$this->model_extension_module_cdek_integrator->uninstall();
-
-	}
-
-	public function cron()
-	{
-		$this->load->model('extension/module/cdek_integrator');
-		$this->load->model('sale/order');
-
-		if(!isset($this->setting['order_status_rule'])) {
-			$this->log->write('Не заданы правила соответствия статусов');
-			return;
-		}
-
-		$_order_status_rule = $this->setting['order_status_rule'];
-		$status_rules = array();
-
-		foreach ($_order_status_rule as $_rule) {
-			$status_rules[(int)$_rule['cdek_status_id']] = $_rule;
-		}
-
-		$_dispatches = $this->model_extension_module_cdek_integrator->getDispatchesToSync(false);
-
-		$dispatches = array();
-		$orders = array();
-		foreach ($_dispatches as $key => $dispatch_info)
-		{
-			$orders[] = array(
-				'dispatch_number' => $dispatch_info['dispatch_number']
-			);
-
-			$dispatches[$dispatch_info['dispatch_number']] = $dispatch_info;
-		}
-
-		if (!$orders) {
-			echo "Not found dispatches to check."; return;
-		}
-
-		foreach($orders as $order) {
-			$component = $this->api->loadComponent('order_info');
-
-			$component->setMetod($order['dispatch_number']);
-
-			$info = $this->api->sendData($component);
-
-			$this->logWrite();
-
-			$dispatch_number = (string)$info['entity']['uuid'];
-
-			if (isset($info['requests'][0]['errors'])){
-				echo $order->attributes()->Msg .$dispatch_number.PHP_EOL;
-				continue;
-			}
-			if(!isset($dispatches[$dispatch_number])) {
-				echo "WARNING: Not isses dispatch ".$dispatch_number.PHP_EOL;
-				continue;
-			}
-			
-			$statuses = $info['entity']['statuses'];
-
-			$end_status = array_shift($statuses);
-
-			$status_id = $end_status['code'];
-
-			$dispatch = $dispatches[$dispatch_number];
-
-			if($dispatch['status_id'] == $status_id) {
-				echo "Order with dispatch ".$dispatch_number." not chenged".PHP_EOL;
-				continue;
-			}
-
-			echo "Working with ".$dispatch_number." status ".$status_id.PHP_EOL;
-
-			$filter_data = array(
-				$dispatch_info['order_id'] => $dispatch
-			);
-
-			$update = $this->sync($filter_data);
-
-			if (isset($update[$dispatch['order_id']]))
-			{
-				$this->model_extension_module_cdek_integrator->editDispatch($dispatch['order_id'], $update[$dispatch['order_id']]);
-			}
-
-			echo PHP_EOL;
-		}
-		
-	}
-
-	private function clearCurrencyFormat($value, $decimal_place = 2, $decimal_point = '.', $thousand_point = ' ') {
-		return number_format(round($value, (int)$decimal_place), (int)$decimal_place, $decimal_point, $thousand_point);
-	}
-
-	public function showPdf() {
-		$order_id = 0;
-		if(isset($this->request->get['order_id']) && (int)$this->request->get['order_id']) {
-			$order_id = (int)$this->request->get['order_id'];
-		}
-
-		$file = DIR_DOWNLOAD . 'cdek/order-' . $this->request->get['order_id'] . '.pdf';
-
-		if (file_exists($file) && is_file($file))
-		{
-			$content = file_get_contents($file);
-
-			header('Content-Type: application/pdf');
-			header('Content-Length: ' . strlen($content));
-			header('Content-Disposition: inline; filename="invoice-'.$order_id.'.pdf"');
-			header('Cache-Control: private, max-age=0, must-revalidate');
-			header('Pragma: public');
-			ini_set('zlib.output_compression','0');
-
-			die($content);
-
-			$rdata['pdf'] = HTTP_CATALOG . 'download/cdek/order-' . $this->request->get['order_id'] . '.pdf';
-		} else {
-			echo 'not found pdf for order '.$order_id;
-		}
-	}
-
-	public function getCityByName($cityName = null) {
-		$cdek_cities = array();
-
-		if($cityName) {
-			$cdek_cities = $this->getInfo()->getCityByName($cityName);
-			return $cdek_cities;
-		}
-
-		if(isset($this->request->get['q'])) {
-			$cityName = $this->request->get['q'];
-		} elseif(isset($this->request->get['name_startsWith'])) {
-			$cityName = $this->request->get['name_startsWith'];
-		} elseif(isset($this->request->get['search'])) {
-			$cityName = $this->request->get['search'];
-		}
-
-		if($cityName) {
-			$cdek_cities = $this->getInfo()->getCityByName($cityName);
-		}
-
-		echo json_encode($cdek_cities);
-	}
-
-	public function logWrite() {
-		if ($this->config->get('shipping_cdek_log')) {
-			$this->log->write('СДЭК: url запроса');
-			$this->log->write(print_r($this->api->curl_url, 1));
-			$this->log->write('СДЭК: передаваемые данные');
-			$this->log->write(print_r($this->api->curl_data, 1));
-			$this->log->write('СДЭК: ответ');
-			$this->log->write(print_r($this->api->curl_success, 1));
-		}
-	}
-
-	public function updateCities() {
-
-		$this->load->model('extension/module/cdek_integrator');
-		$this->load->language('extension/module/cdek_integrator');
-
-		ini_set('max_execution_time', 900);
-		ini_set('output_buffering ', 'off');
-
-		$countries = array(
-			'RU', 'AM', 'BY', 'KZ', 'KG', 'UA', 'UZ'
-		);
-
-		$this->model_extension_module_cdek_integrator->deleteCities();
-
-		$info = $this->api->loadComponent('info');
-
-		$auth_token = $info->getAuthToken();
-		if (isset($auth_token['access_token'])) {
-			foreach ($countries as $country) {
-				
-				$check_unique = array();
-
-				for ($i = 0; ; $i++) {
-					
-					$url = 'https://api.cdek.ru/v2/location/cities?size=1000&country_codes=' . $country . '&page=' . $i;  
-					$ch = curl_init();
-					curl_setopt($ch, CURLOPT_URL, $url);
-					curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-					curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE);
-					curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-					curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-						'Authorization: Bearer ' . $auth_token['access_token'],
-						'Content-Type: application/json')
-						);
-					curl_setopt($ch, CURLOPT_TIMEOUT, 50);
-					curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 50);
-								
-					$out = curl_exec($ch);
-					
-					$out = json_decode($out, true);
-
-					$data = array();			
-
-					foreach ($out as $value) {
-						if (!empty($value['code'])) {
-							if (!empty($value['region'])) {
-								$name = $value['city'] . ', ' . $value['region'];
-								$region = $value['region'];
-							} else {
-								$name = $value['city'] . ',' . $value['country'];
-								$region = '';
-							}
-							if (!empty($value['payment_limit'])) {
-								$payment_limit = (float)$value['payment_limit'];
-							} else {
-								$payment_limit = (float)0;
-							}
-							if (!in_array($value['code'], $check_unique)) {
-								$data[] = array(
-									'id' => $value['code'],
-									'name' => $name,
-									'cityName' => $value['city'],
-									'regionName' => $region,
-									'payment_limit' => $payment_limit,
-								);
-								
-								$check_unique[] = $value['code'];
-							}
-						}
-					}
-
-					$this->model_extension_module_cdek_integrator->addCities($data);
-
-
-					if (count($out) < 1000) {
-						break;
-					}
-
-					// ob_start();
-
-					// header('HTTP/1.1 202 Accepted');
-					// echo "Обновлено городов: " . 1000*$i . ". Обновление продолжается./n";
-
-					// ob_end_flush();
-				}
-			}
-
-			$this->session->data['success'] = $this->language->get('text_updatesuccess');
-		} else {
-			$this->log->write('СДЭК: ошибка авторизации');
-		}
-		
-		if (!empty($this->request->get['redirect'])) {
-			$this->response->redirect($this->url->link($this->request->get['redirect'], 'user_token=' . $this->session->data['user_token'], 'SSL'));
-		} else {
-			$this->response->redirect($this->url->link('extension/module/cdek_integrator', 'user_token=' . $this->session->data['user_token'], 'SSL'));
-		}	
-	}
-
-	private function templateOutput($tpl, $data) {
-		return $this->load->view('extension/module/cdek_integrator/'.$tpl, $data);
-	}
+    private function templateOutput($tpl, $data)
+    {
+        return $this->load->view('extension/module/cdek_integrator/' . $tpl, $data);
+    }
 }
-
-?>
