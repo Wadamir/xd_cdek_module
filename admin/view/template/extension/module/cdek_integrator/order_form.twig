@@ -404,20 +404,20 @@
                                         <label class="col-sm-2 control-label">{{ text_package }}</label>
                                         <div class="col-sm-10">
                                             <label class="radio-inline">
-                                                {% if checkpackage %}
-                                                    <input type="radio" name="checkpackage" value="1" checked="checked" />
+                                                {% if check_package %}
+                                                    <input type="radio" name="check_package" value="1" checked="checked" />
                                                     {{ text_yes }}
                                                 {% else %}
-                                                    <input type="radio" name="checkpackage" value="1" />
+                                                    <input type="radio" name="check_package" value="1" />
                                                     {{ text_yes }}
                                                 {% endif %}
                                             </label>
                                             <label class="radio-inline">
-                                                {% if not checkpackage %}
-                                                    <input type="radio" name="checkpackage" value="0" checked="checked" />
+                                                {% if not check_package %}
+                                                    <input type="radio" name="check_package" value="0" checked="checked" />
                                                     {{ text_no }}
                                                 {% else %}
-                                                    <input type="radio" name="checkpackage" value="0" />
+                                                    <input type="radio" name="check_package" value="0" />
                                                     {{ text_no }}
                                                 {% endif %}
                                             </label>
@@ -824,23 +824,23 @@
                                             <tr>
                                                 <td>{{ entry_add_service }}</td>
                                                 <td>
-                                                    <div class="scrollbox cervices">
+                                                    <div class="scrollbox services">
                                                         {% set class = "even" %}
                                                         {% set checked = [] %}
                                                         {% if (cdek_orders['add_service'] is not empty) %}
                                                             {% set checked = [] %}
-                                                            {% for service_id,cervice_info in cdek_orders['add_service'] %}
+                                                            {% for service_id,service_info in cdek_orders['add_service'] %}
                                                                 {% set checked = checked|merge([service_id]) %}
                                                             {% endfor %}
                                                         {% endif %}
-                                                        {% for cervice_code,cervice_info in add_cervices %}
-                                                            {% if (cervice_info['hide'] is defined) %}
+                                                        {% for service_code,service_info in add_services %}
+                                                            {% if (service_info['hide'] is defined) %}
                                                                 {% set class = class == 'even' ? 'odd' : 'even' %}
                                                             {% endif %}
                                                             <div class="{{ class }}">
-                                                                <input type="checkbox" name="cdek_orders[add_service][{{ cervice_code }}][service_id]" value="{{ cervice_code }}" {% if cervice_code in checked %}{{ 'checked="checked"' }}{% endif %} />
+                                                                <input type="checkbox" name="cdek_orders[add_service][{{ service_code }}][service_id]" value="{{ service_code }}" {% if service_code in checked %}{{ 'checked="checked"' }}{% endif %} />
                                                                 <div class="item-description">
-                                                                    {{ cervice_info['title'] }}<span class="help">{{ cervice_info['description'] }}</span>
+                                                                    {{ service_info['title'] }}<span class="help">{{ service_info['description'] }}</span>
                                                                 </div>
                                                             </div>
                                                         {% endfor %}
@@ -1095,10 +1095,10 @@ $('select.address-pvz-code').change(function(event) {
                 $('.setting-city-id').trigger('change');
             }
         });
-        $('input[name=\'checkpackage\']').trigger('change');
+        $('input[name=\'check_package\']').trigger('change');
     });
-    $('input[name=\'checkpackage\']').on('change', function() {
-        var check = $('input[name=\'checkpackage\']:checked').val();
+    $('input[name=\'check_package\']').on('change', function() {
+        var check = $('input[name=\'check_package\']:checked').val();
         if (check == 1) {
             $('.package').css('display', 'block');
             $('.package input').removeAttr('disabled');

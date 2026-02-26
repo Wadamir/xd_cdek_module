@@ -168,14 +168,14 @@ tr.new-order .action {
 	font-size: 1.3em;
 	color: #666;
 }
-.scrollbox.cervices {
+.scrollbox.services {
 	height: 300px;
 }
-.scrollbox.cervices input {
+.scrollbox.services input {
 	float: left;
 	margin: 5px;
 }
-.scrollbox.cervices .item-description {
+.scrollbox.services .item-description {
 	overflow: hidden;
 }
 .parent td,

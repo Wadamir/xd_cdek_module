@@ -7,7 +7,7 @@
                     <i class="fa fa-save"></i>
                 </button>
                 <button type="button" onclick="$('#form-cdekoption').attr('action', $('#form-cdekoption').attr('action') + '&redirect=false'); $('#form-cdekoption').submit();" class="btn btn-primary">{{ button_apply }}</button>
-                <a href="{{ update_city }}" data-toggle="tooltip" class="btn btn-default">{{ text_updatecity }}</a>
+                <a href="{{ update_city }}" data-toggle="tooltip" class="btn btn-default">{{ text_update_city }}</a>
                 <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
             </div>
             <h1>{{ heading_title }}</h1>
@@ -521,11 +521,11 @@
                                 <label class="col-sm-2 control-label">{{ entry_add_service }}</label>
                                 <div class="col-sm-10">
                                     <div class="well well-sm" style="height: 150px; overflow: auto;">
-                                        {% for cervice_code,cervice_info in add_cervices %}
+                                        {% for service_code,service_info in add_services %}
                                             <div class="checkbox">
                                                 <label>
-                                                    <input type="checkbox" name="cdek_integrator_setting[add_service][]" value="{{ cervice_code }}" {% if (setting['add_service'] is not empty and cervice_code in setting['add_service']) %} {{ 'checked="checked"' }}{% endif %} />
-                                                    <span data-toggle="tooltip" title="{{ cervice_info['description'] }}">{{ cervice_info['title'] }}</span>
+                                                    <input type="checkbox" name="cdek_integrator_setting[add_service][]" value="{{ service_code }}" {% if (setting['add_service'] is not empty and service_code in setting['add_service']) %} {{ 'checked="checked"' }}{% endif %} />
+                                                    <span data-toggle="tooltip" title="{{ service_info['description'] }}">{{ service_info['title'] }}</span>
                                                 </label>
                                             </div>
                                         {% endfor %}

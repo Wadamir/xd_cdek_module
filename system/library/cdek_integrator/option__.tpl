@@ -6,7 +6,7 @@
                 <button type="submit" form="form-cdekoption" data-toggle="tooltip" title="<?php echo $button_save; ?>" class="btn btn-primary"><i class="fa fa-save"></i></button>
                 <button type="button" onclick="$('#form-cdekoption').attr('action', $('#form-cdekoption').attr('action') + '&redirect=false'); $('#form-cdekoption').submit();" class="btn btn-primary"><?php echo $button_apply; ?></button>
                 <a href="<?php echo $update_city; ?>" data-toggle="tooltip" class="btn btn-default">
-                    <?php echo $text_updatecity; ?>
+                    <?php echo $text_update_city; ?>
                 </a>
                 <a href="<?php echo $cancel; ?>" data-toggle="tooltip" title="<?php echo $button_cancel; ?>" class="btn btn-default"><i class="fa fa-reply"></i></a>
             </div>
@@ -458,12 +458,12 @@
                                 <label class="col-sm-2 control-label"><?php echo $entry_add_service; ?></label>
                                 <div class="col-sm-10">
                                     <div class="well well-sm" style="height: 150px; overflow: auto;">
-                                        <?php foreach ($add_cervices as $cervice_code => $cervice_info) { ?>
-                                            <?php if (isset($cervice_info['hide'])) continue; ?>
+                                        <?php foreach ($add_services as $service_code => $service_info) { ?>
+                                            <?php if (isset($service_info['hide'])) continue; ?>
                                             <div class="checkbox">
                                                 <label>
-                                                    <input type="checkbox" name="cdek_integrator_setting[add_service][]" value="<?php echo $cervice_code; ?>" <?php if (!empty($setting['add_service']) && in_array($cervice_code, $setting['add_service'])) echo 'checked="checked"'; ?> />
-                                                    <span data-toggle="tooltip" title="<?php echo $cervice_info['description']; ?>"><?php echo $cervice_info['title']; ?></span>
+                                                    <input type="checkbox" name="cdek_integrator_setting[add_service][]" value="<?php echo $service_code; ?>" <?php if (!empty($setting['add_service']) && in_array($service_code, $setting['add_service'])) echo 'checked="checked"'; ?> />
+                                                    <span data-toggle="tooltip" title="<?php echo $service_info['description']; ?>"><?php echo $service_info['title']; ?></span>
                                                 </label>
                                             </div>
                                         <?php } ?>

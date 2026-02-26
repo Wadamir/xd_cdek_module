@@ -121,7 +121,7 @@ class ModelExtensionModuleCdekIntegrator extends Model
 
         if (!empty($data['filter_payment'])) {
 
-            $pyament_condition = array();
+            $payment_condition = array();
 
             if (is_array($data['filter_payment'])) {
                 $payment_code = $data['filter_payment'];
@@ -129,7 +129,7 @@ class ModelExtensionModuleCdekIntegrator extends Model
                 $payment_code = array($data['filter_payment']);
             }
 
-            $conditions[] = "LCASE(o.payment_code) IN ('" . implode("', '", $payment_code) . "')"/*"(" . implode(' OR ', $pyament_condition) . ")"*/;
+            $conditions[] = "LCASE(o.payment_code) IN ('" . implode("', '", $payment_code) . "')"/*"(" . implode(' OR ', $payment_condition) . ")"*/;
         }
 
         if (!empty($data['filter_customer'])) {
@@ -769,7 +769,7 @@ class ModelExtensionModuleCdekIntegrator extends Model
         return $this->db->query("SELECT * FROM `" . DB_PREFIX . "cdek_order_courier` WHERE order_id = " . (int)$order_id)->row;
     }
 
-    public function getChedule($order_id)
+    public function getSchedule($order_id)
     {
 
         $sql  = "SELECT sch.*, ";
